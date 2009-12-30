@@ -3,18 +3,18 @@ package Gearman::Driver;
 use Moose;
 use Carp qw(croak);
 use Gearman::Driver::Observer;
-use Gearman::Driver::Wheel;
+use Gearman::Driver::Job;
 use Log::Log4perl qw(:easy);
 use Module::Find;
 use MooseX::Types::Path::Class;
 use POE;
 with qw(MooseX::Log::Log4perl MooseX::Getopt);
 
-our $VERSION = '0.01000_01';
+our $VERSION = '0.01000_02';
 
 =head1 NAME
 
-Gearman::Driver - Manage Gearman workers
+Gearman::Driver - Manages Gearman workers
 
 =head1 SYNOPSIS
 
@@ -91,8 +91,8 @@ the constructor: namespaces
     use Gearman::Driver;
     my $driver = Gearman::Driver->new( namespaces => [qw(My::Workers)] );
 
-See also: L<Gearman::Driver/namespaces>. If you do not set
-L</server> (gearmand) attribute the default will be used:
+See also: L<namespaces|/namespaces>. If you do not set
+L<server|/server> (gearmand) attribute the default will be used:
 C<localhost:4730>
 
 Each module found in your namespace will be loaded and introspected,
@@ -132,7 +132,7 @@ a custom prefix:
 
 This would register 'foo_bar_scale_image' with gearmand.
 
-See also: L<Gearman::Driver::Worker/prefix>
+See also: L<prefix|Gearman::Driver::Worker/prefix>
 
 =head1 ATTRIBUTES
 
@@ -142,14 +142,14 @@ Will be passed to L<Module::Find> C<useall> method to load worker
 modules. Each one of those modules has to be inherited from
 L<Gearman::Driver::Worker> or a subclass of it. It's also possible
 to use the full package name to load a single module/file. There is
-also a method L<Gearman::Driver/get_namespaces> which returns
-a sorted list of all namespaces.
+also a method L<get_namespaces|Gearman::Driver/get_namespaces> which
+returns a sorted list of all namespaces.
 
 =over 4
 
-=item * isa: ArrayRef
+=item * isa: C<ArrayRef>
 
-=item * required: True
+=item * required: C<True>
 
 =back
 
@@ -164,71 +164,6 @@ has 'namespaces' => (
     traits        => [qw(Array)],
 );
 
-=head2 modules
-
-Every worker module loaded by L<Module::Find> will be added to this
-list. There are also two methods: L<Gearman::Driver/get_modules> and
-L<Gearman::Driver/has_modules>.
-
-=over 4
-
-=item * isa: ArrayRef
-
-=item * readonly: True
-
-=back
-
-=cut
-
-has 'modules' => (
-    default => sub { [] },
-    handles => {
-        _add_module => 'push',
-        get_modules => 'sort',
-        has_modules => 'count',
-    },
-    is     => 'ro',
-    isa    => 'ArrayRef[Str]',
-    traits => [qw(Array NoGetopt)],
-);
-
-=head2 wheels
-
-Stores all L<Gearman::Driver::Wheel> instances. The key is the name
-the job gets registered with gearmand. There are also two methods:
-L<Gearman::Driver/get_wheel> and L<Gearman::Driver/has_wheel>.
-
-Example:
-
-    {
-        'My::Workers::ONE::scale_image'       => bless( {...}, 'Gearman::Driver::Wheel' ),
-        'My::Workers::ONE::do_something_else' => bless( {...}, 'Gearman::Driver::Wheel' ),
-        'My::Workers::TWO::scale_image'       => bless( {...}, 'Gearman::Driver::Wheel' ),
-    }
-
-=over 4
-
-=item * isa: HashRef
-
-=item * readonly: True
-
-=back
-
-=cut
-
-has 'wheels' => (
-    default => sub { {} },
-    handles => {
-        _set_wheel => 'set',
-        get_wheel  => 'get',
-        get_wheels => 'values',
-        has_wheel  => 'defined',
-    },
-    is     => 'ro',
-    isa    => 'HashRef',
-    traits => [qw(Hash NoGetopt)],
-);
-
 =head2 server
 
 A list of Gearman servers the workers should connect to. The format
@@ -238,9 +173,9 @@ See also: L<Gearman::XS>
 
 =over 4
 
-=item * default: localhost:4730
+=item * default: C<localhost:4730>
 
-=item * isa: Str
+=item * isa: C<Str>
 
 =back
 
@@ -259,14 +194,15 @@ has 'server' => (
 Each n seconds L<Net::Telnet::Gearman> is used in
 L<Gearman::Driver::Observer> to check status of free/running/busy
 workers on gearmand. This is used to fork more workers depending
-on the queue size and the MinChilds/MaxChilds attribute of the
+on the queue size and the MinChilds/MaxChilds
+L<attribute|Gearman::Driver::Worker/METHODATTRIBUTES> of the
 job method. See also: L<Gearman::Driver::Worker>
 
 =over 4
 
-=item * default: 5
+=item * default: C<5>
 
-=item * isa: Int
+=item * isa: C<Int>
 
 =back
 
@@ -280,35 +216,15 @@ has 'interval' => (
     required      => 1,
 );
 
-=head2 observer
-
-Instance of L<Gearman::Driver::Observer>.
-
-=over 4
-
-=item * isa: Gearman::Driver::Observer
-
-=item * readonly: True
-
-=back
-
-=cut
-
-has 'observer' => (
-    is     => 'ro',
-    isa    => 'Gearman::Driver::Observer',
-    traits => [qw(NoGetopt)],
-);
-
 =head2 logfile
 
 Path to logfile.
 
 =over 4
 
-=item * isa: Str
+=item * isa: C<Str>
 
-=item * default: gearman_driver.log
+=item * default: C<gearman_driver.log>
 
 =back
 
@@ -328,7 +244,7 @@ See also L<Log::Log4perl>.
 
 =over 4
 
-=item * isa: Str
+=item * isa: C<Str>
 
 =item * default: C<[%d] %m%n>
 
@@ -349,9 +265,9 @@ See also L<Log::Log4perl>.
 
 =over 4
 
-=item * isa: Str
+=item * isa: C<Str>
 
-=item * default: INFO
+=item * default: C<INFO>
 
 =back
 
@@ -371,9 +287,9 @@ it will call this CodeRef, passing following arguments:
 
 =over 4
 
-=item * $driver
+=item * C<$driver>
 
-=item * $status
+=item * C<$status>
 
 =back
 
@@ -401,37 +317,108 @@ has 'unknown_job_callback' => (
     default => sub {
         sub { }
     },
-    is  => 'rw',
-    isa => 'CodeRef',
+    is     => 'rw',
+    isa    => 'CodeRef',
+    traits => [qw(NoGetopt)],
+);
+
+=head1 INTERNAL ATTRIBUTES
+
+This might be interesting for subclassing L<Gearman::Driver>.
+
+=head2 modules
+
+Every worker module loaded by L<Module::Find> will be added to this
+list. There are also two methods:
+L<get_modules|Gearman::Driver/get_modules> and
+L<has_modules|Gearman::Driver/has_modules>.
+
+=over 4
+
+=item * isa: C<ArrayRef>
+
+=item * readonly: C<True>
+
+=back
+
+=cut
+
+has 'modules' => (
+    default => sub { [] },
+    handles => {
+        _add_module => 'push',
+        get_modules => 'sort',
+        has_modules => 'count',
+    },
+    is     => 'ro',
+    isa    => 'ArrayRef[Str]',
+    traits => [qw(Array NoGetopt)],
+);
+
+=head2 jobs
+
+Stores all L<Gearman::Driver::Job> instances. The key is the name
+the job gets registered with gearmand. There are also two methods:
+L<get_job|Gearman::Driver/get_job> and
+L<has_job|Gearman::Driver/has_job>.
+
+Example:
+
+    {
+        'My::Workers::ONE::scale_image'       => bless( {...}, 'Gearman::Driver::Job' ),
+        'My::Workers::ONE::do_something_else' => bless( {...}, 'Gearman::Driver::Job' ),
+        'My::Workers::TWO::scale_image'       => bless( {...}, 'Gearman::Driver::Job' ),
+    }
+
+=over 4
+
+=item * isa: C<HashRef>
+
+=item * readonly: C<True>
+
+=back
+
+=cut
+
+has 'jobs' => (
+    default => sub { {} },
+    handles => {
+        _set_job => 'set',
+        get_job  => 'get',
+        get_jobs => 'values',
+        has_job  => 'defined',
+    },
+    is     => 'ro',
+    isa    => 'HashRef',
+    traits => [qw(Hash NoGetopt)],
+);
+
+=head2 observer
+
+Instance of L<Gearman::Driver::Observer>.
+
+=over 4
+
+=item * isa: C<Gearman::Driver::Observer>
+
+=item * readonly: C<True>
+
+=back
+
+=cut
+
+has 'observer' => (
+    is     => 'ro',
+    isa    => 'Gearman::Driver::Observer',
+    traits => [qw(NoGetopt)],
 );
 
 has '+logger' => ( traits => [qw(NoGetopt)] );
 
 =head1 METHODS
 
-=head2 get_namespaces
-
-Returns a sorted list of L<Gearman::Driver/namespaces>.
-
-=head2 get_modules
-
-Returns a sorted list of L<Gearman::Driver/modules>.
-
-=head2 has_modules
-
-Returns the count of L<Gearman::Driver/modules>.
-
-=head2 has_wheel
-
-Params: $name
-
-Returns true/false if the wheel exists.
-
-=head2 get_wheel
-
-Params: $name
-
-Returns the wheel instance.
+Every method except L<run|/run> might only be interesting for
+people subclassing L<Gearman::Driver>.
 
 =head2 run
 
@@ -443,6 +430,32 @@ sub run {
     POE::Kernel->run();
 }
 
+=head2 get_namespaces
+
+Returns a sorted list of L<namespaces|Gearman::Driver/namespaces>.
+
+=head2 get_modules
+
+Returns a sorted list of L<modules|Gearman::Driver/modules>.
+
+=head2 has_modules
+
+Returns the count of L<modules|Gearman::Driver/modules>.
+
+=head2 has_job
+
+Params: $name
+
+Returns true/false if the job exists.
+
+=head2 get_job
+
+Params: $name
+
+Returns the job instance.
+
+=cut
+
 sub BUILD {
     my ($self) = @_;
     $self->_setup_logger;
@@ -450,7 +463,7 @@ sub BUILD {
     $self->_start_observer;
     $self->_start_session;
 
-    # $self->_start_wheels;
+    # $self->_start_jobs;
 }
 
 sub _setup_logger {
@@ -522,22 +535,22 @@ sub _start_observer {
 sub _observer_callback {
     my ( $self, $status ) = @_;
     foreach my $row (@$status) {
-        if ( my $wheel = $self->get_wheel( $row->{name} ) ) {
-            if ( $wheel->count_childs && $wheel->count_childs == $row->{busy} && $row->{queue} ) {
+        if ( my $job = $self->get_job( $row->{name} ) ) {
+            if ( $job->count_childs && $job->count_childs == $row->{busy} && $row->{queue} ) {
                 my $diff = $row->{queue} - $row->{busy};
-                my $free = $wheel->max_childs - $wheel->count_childs;
+                my $free = $job->max_childs - $job->count_childs;
                 if ($free) {
                     my $start = $diff > $free ? $free : $diff;
-                    $wheel->add_child for 1 .. $start;
+                    $job->add_child for 1 .. $start;
                 }
             }
-            elsif ( $wheel->count_childs && $wheel->count_childs > $wheel->min_childs && $row->{queue} == 0 ) {
-                my $stop = $wheel->count_childs - $wheel->min_childs;
-                $wheel->remove_child for 1 .. $stop;
+            elsif ( $job->count_childs && $job->count_childs > $job->min_childs && $row->{queue} == 0 ) {
+                my $stop = $job->count_childs - $job->min_childs;
+                $job->remove_child for 1 .. $stop;
             }
-            elsif ( $wheel->count_childs < $wheel->min_childs ) {
-                my $start = $wheel->min_childs - $wheel->count_childs;
-                $wheel->add_child for 1 .. $start;
+            elsif ( $job->count_childs < $job->min_childs ) {
+                my $start = $job->min_childs - $job->count_childs;
+                $job->add_child for 1 .. $start;
             }
         }
         else {
@@ -561,9 +574,9 @@ sub _start_session {
 sub _on_sig {
     my ( $self, $kernel, $heap ) = @_[ OBJECT, KERNEL, HEAP ];
 
-    foreach my $wheel ( $self->get_wheels ) {
-        foreach my $child ( $wheel->get_childs ) {
-            $self->log->info( sprintf '(%d) [%s] Child killed', $child->PID, $wheel->name );
+    foreach my $job ( $self->get_jobs ) {
+        foreach my $child ( $job->get_childs ) {
+            $self->log->info( sprintf '(%d) [%s] Child killed', $child->PID, $job->name );
             $child->kill();
         }
     }
@@ -575,10 +588,10 @@ sub _on_sig {
 
 sub _start {
     $_[KERNEL]->sig( $_ => 'got_sig' ) for qw(INT QUIT ABRT KILL TERM);
-    $_[OBJECT]->_start_wheels;
+    $_[OBJECT]->_start_jobs;
 }
 
-sub _start_wheels {
+sub _start_jobs {
     my ($self) = @_;
 
     foreach my $module ( $self->get_modules ) {
@@ -586,7 +599,7 @@ sub _start_wheels {
         foreach my $method ( $module->meta->get_nearest_methods_with_attributes ) {
             my $attr  = $worker->_parse_attributes( $method->attributes );
             my $name  = $worker->prefix . $method->name;
-            my $wheel = Gearman::Driver::Wheel->new(
+            my $job = Gearman::Driver::Job->new(
                 driver     => $self,
                 method     => $method,
                 name       => $name,
@@ -596,9 +609,9 @@ sub _start_wheels {
                 max_childs => $attr->{MaxChilds},
             );
             for ( 1 .. $attr->{MinChilds} ) {
-                $wheel->add_child();
+                $job->add_child();
             }
-            $self->_set_wheel( $name => $wheel );
+            $self->_set_job( $name => $job );
         }
     }
 }
@@ -620,7 +633,7 @@ it under the same terms as Perl itself.
 
 =item * L<Gearman::Driver::Observer>
 
-=item * L<Gearman::Driver::Wheel>
+=item * L<Gearman::Driver::Job>
 
 =item * L<Gearman::Driver::Worker>
 

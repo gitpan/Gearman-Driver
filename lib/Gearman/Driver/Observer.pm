@@ -6,7 +6,7 @@ use POE;
 
 =head1 NAME
 
-Gearman::Driver::Observer - Observes gearmand status interface
+Gearman::Driver::Observer - Observes Gearman status interface
 
 =head1 DESCRIPTION
 
@@ -119,7 +119,7 @@ it under the same terms as Perl itself.
 
 =item * L<Gearman::Driver>
 
-=item * L<Gearman::Driver::Wheel>
+=item * L<Gearman::Driver::Job>
 
 =item * L<Gearman::Driver::Worker>
 

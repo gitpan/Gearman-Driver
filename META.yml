@@ -1,9 +1,11 @@
 ---
-abstract: 'Manage Gearman workers'
+abstract: 'Manages Gearman workers'
 author:
   - 'Johannes Plunien <plu@cpan.org>'
 build_requires:
   ExtUtils::MakeMaker: 6.42
+  File::Slurp: 0
+  File::Temp: 0
   Test::More: 0
 configure_requires:
   ExtUtils::MakeMaker: 6.42
@@ -31,4 +33,4 @@ requires:
   POE: 1.280
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.01000_01
+version: 0.01000_02
