@@ -10,7 +10,7 @@ use MooseX::Types::Path::Class;
 use POE;
 with qw(MooseX::Log::Log4perl MooseX::Getopt);
 
-our $VERSION = '0.01000_02';
+our $VERSION = '0.01001';
 
 =head1 NAME
 
@@ -595,7 +595,7 @@ sub _start_jobs {
     my ($self) = @_;
 
     foreach my $module ( $self->get_modules ) {
-        my $worker = $module->new();
+        my $worker = $module->new( server => $self->server );
         foreach my $method ( $module->meta->get_nearest_methods_with_attributes ) {
             my $attr  = $worker->_parse_attributes( $method->attributes );
             my $name  = $worker->prefix . $method->name;
@@ -615,6 +615,10 @@ sub _start_jobs {
         }
     }
 }
+
+no Moose;
+
+__PACKAGE__->meta->make_immutable;
 
 =head1 AUTHOR
 
