@@ -1,6 +1,7 @@
 package Gearman::Driver;
 
 use Moose;
+use Moose::Util qw(apply_all_roles);
 use Carp qw(croak);
 use Gearman::Driver::Observer;
 use Gearman::Driver::Job;
@@ -10,7 +11,7 @@ use MooseX::Types::Path::Class;
 use POE;
 with qw(MooseX::Log::Log4perl MooseX::Getopt);
 
-our $VERSION = '0.01001';
+our $VERSION = '0.01002';
 
 =head1 NAME
 
@@ -25,19 +26,19 @@ Gearman::Driver - Manages Gearman workers
 
     # this method will be registered with gearmand as 'My::Workers::One::scale_image'
     sub scale_image : Job {
-        my ( $self, $job ) = @_;
+        my ( $self, $job, $workload ) = @_;
         # do something
     }
 
     # this method will be registered with gearmand as 'My::Workers::One::do_something_else'
     sub do_something_else : Job : MinChilds(2) : MaxChilds(15) {
-        my ( $self, $job ) = @_;
+        my ( $self, $job, $workload ) = @_;
         # do something
     }
 
     # this method wont be registered with gearmand at all
     sub do_something_internal {
-        my ( $self, $job ) = @_;
+        my ( $self, $job, $workload ) = @_;
         # do something
     }
 
@@ -50,7 +51,7 @@ Gearman::Driver - Manages Gearman workers
 
     # this method will be registered with gearmand as 'My::Workers::Two::scale_image'
     sub scale_image : Job {
-        my ( $self, $job ) = @_;
+        my ( $self, $job, $workload ) = @_;
         # do something
     }
 
@@ -101,7 +102,7 @@ looking for methods having the 'Job' attribute set:
     package My::Workers::ONE;
 
     sub scale_image : Job {
-        my ( $self, $job ) = @_;
+        my ( $self, $job, $workload ) = @_;
         # do something
     }
 
@@ -126,7 +127,7 @@ a custom prefix:
     sub prefix { 'foo_bar_' }
 
     sub scale_image : Job {
-        my ( $self, $job ) = @_;
+        my ( $self, $job, $workload ) = @_;
         # do something
     }
 
@@ -597,18 +598,19 @@ sub _start_jobs {
     foreach my $module ( $self->get_modules ) {
         my $worker = $module->new( server => $self->server );
         foreach my $method ( $module->meta->get_nearest_methods_with_attributes ) {
-            my $attr  = $worker->_parse_attributes( $method->attributes );
-            my $name  = $worker->prefix . $method->name;
-            my $job = Gearman::Driver::Job->new(
+            apply_all_roles( $method => 'Gearman::Driver::Worker::AttributeParser' );
+            next unless $method->has_attribute('Job');
+            my $name = $worker->prefix . $method->name;
+            my $job  = Gearman::Driver::Job->new(
                 driver     => $self,
                 method     => $method,
                 name       => $name,
                 worker     => $worker,
                 server     => $self->server,
-                min_childs => $attr->{MinChilds},
-                max_childs => $attr->{MaxChilds},
+                min_childs => $method->get_attribute('MinChilds'),
+                max_childs => $method->get_attribute('MaxChilds'),
             );
-            for ( 1 .. $attr->{MinChilds} ) {
+            for ( 1 .. $method->get_attribute('MinChilds') ) {
                 $job->add_child();
             }
             $self->_set_job( $name => $job );

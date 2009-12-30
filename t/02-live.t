@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More tests => 8;
+use Test::More tests => 12;
 use FindBin;
 use lib "$FindBin::Bin/lib";
 use TestLib;
@@ -59,4 +59,24 @@ for ( 1 .. 5 ) {
 {
     my ( $ret, $string ) = $gc->do( 'Live::NS1::Spread::main' => 'some workload ...' );
     is( $string, '12345', 'Spreading works (tests $worker->server attribute)' );
+}
+
+{
+    my ( $ret, $string ) = $gc->do( 'Live::NS1::Encode::job1' => 'some workload ...' );
+    is( $string, 'STANDARDENCODE::some workload ...::STANDARDENCODE', 'Standard encoding works' );
+}
+
+{
+    my ( $ret, $string ) = $gc->do( 'Live::NS1::Encode::job2' => 'some workload ...' );
+    is( $string, 'CUSTOMENCODE::some workload ...::CUSTOMENCODE', 'Custom encoding works' );
+}
+
+{
+    my ( $ret, $string ) = $gc->do( 'Live::NS1::Decode::job1' => 'some workload ...' );
+    is( $string, 'STANDARDDECODE::some workload ...::STANDARDDECODE', 'Standard decoding works' );
+}
+
+{
+    my ( $ret, $string ) = $gc->do( 'Live::NS1::Decode::job2' => 'some workload ...' );
+    is( $string, 'CUSTOMDECODE::some workload ...::CUSTOMDECODE', 'Custom decoding works' );
 }

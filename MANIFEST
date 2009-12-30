@@ -16,6 +16,7 @@ lib/Gearman/Driver.pm
 lib/Gearman/Driver/Job.pm
 lib/Gearman/Driver/Observer.pm
 lib/Gearman/Driver/Worker.pm
+lib/Gearman/Driver/Worker/AttributeParser.pm
 Makefile.PL
 MANIFEST			This list of files
 META.yml
@@ -25,6 +26,8 @@ t/01-validate.t
 t/02-live.t
 t/gearman_driver.pl
 t/gearmand.pl
+t/lib/Live/NS1/Decode.pm
+t/lib/Live/NS1/Encode.pm
 t/lib/Live/NS1/Spread.pm
 t/lib/Live/NS1/Wrk1.pm
 t/lib/Live/NS1/WrkBeginEnd.pm

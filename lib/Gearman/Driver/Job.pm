@@ -119,9 +119,25 @@ sub BUILD {
     $self->gearman->add_servers( $self->server );
 
     my $wrapper = sub {
-        $self->worker->begin( @_ );
-        my $result = $self->method->body->( $self->worker, @_ );
-        $self->worker->end( @_ );
+        my ($job) = @_;
+
+        my @args = ($job);
+
+        if ( my $decoder = $self->method->get_attribute('Decode') ) {
+            push @args, $self->worker->$decoder( $job->workload );
+        }
+        else {
+            push @args, $job->workload;
+        }
+
+        $self->worker->begin(@args);
+        my $result = $self->method->body->( $self->worker, @args );
+        $self->worker->end(@args);
+
+        if ( my $encoder = $self->method->get_attribute('Encode') ) {
+            $result = $self->worker->$encoder($result);
+        }
+
         return $result;
     };
 

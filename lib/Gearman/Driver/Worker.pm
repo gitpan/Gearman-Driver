@@ -15,6 +15,7 @@ Gearman::Driver::Worker - Base class for workers
     use Moose;
 
     sub begin {
+        my ( $self, $job, $workload ) = @_;
         # called before each job
     }
 
@@ -24,16 +25,17 @@ Gearman::Driver::Worker - Base class for workers
     }
 
     sub do_something : Job : MinChilds(2) : MaxChilds(15) {
-        my ( $self, $job ) = @_;
+        my ( $self, $job, $workload ) = @_;
         # $job => Gearman::XS::Job instance
     }
 
     sub end {
+        my ( $self, $job, $workload ) = @_;
         # called after each job
     }
 
     sub spread_work : Job {
-        my ( $self, $job ) = @_;
+        my ( $self, $job, $workload ) = @_;
 
         my $gc = Gearman::XS::Client->new;
         $gc->add_servers( $self->server );
@@ -54,16 +56,16 @@ Gearman::Driver::Worker - Base class for workers
 =head2 server
 
 L<Gearman::Driver> connects to the L<server|Gearman::Driver/server>
-give to its constructor. This value is also stored in this class.
+passed to its constructor. This value is also stored in this class.
 This can be useful if a job uses L<Gearman::XS::Client> to add
 another jobs. See 'spread_work' method in L</SYNOPSIS> above.
 
 =cut
 
 has 'server' => (
-    is            => 'ro',
-    isa           => 'Str',
-    required      => 1,
+    is       => 'ro',
+    isa      => 'Str',
+    required => 1,
 );
 
 =head1 METHODATTRIBUTES
@@ -79,6 +81,83 @@ Minimum number of childs working parallel on this job/method.
 =head2 MaxChilds
 
 Maximum number of childs working parallel on this job/method.
+
+=head2 Encode
+
+This will automatically look for a method C<encode> in this object
+which has to be defined in the subclass. It will call the C<encode>
+method passing the return value from the job method. The return
+value of the C<encode> method will be returned to the Gearman
+client. This is useful to serialize Perl datastructures to JSON
+before sending them back to the client.
+
+    sub do_some_job : Job : Encode : Decode {
+        my ( $self, $job, $workload ) = @_;
+        return { message => 'OK', status => 1 };
+
+        # calls 'encode' and returns JSON string: {"status":1,"message":"OK"}
+    }
+
+    sub custom_encoder : Job : Encode(enc_yaml) : Decode(dec_yaml) {
+        my ( $self, $job, $workload ) = @_;
+        return { message => 'OK', status => 1 };
+
+        # calls 'enc_yaml' and returns YAML string:
+        # ---
+        # message: OK
+        # status: 1
+    }
+
+    sub encode {
+        my ( $self, $result ) = @_;
+        return JSON::XS::encode_json($result);
+    }
+
+    sub decode {
+        my ( $self, $workload ) = @_;
+        return JSON::XS::decode_json($workload);
+    }
+
+    sub enc_yaml {
+        my ( $self, $result ) = @_;
+        return YAML::XS::Dump($result);
+    }
+
+    sub dec_yaml {
+        my ( $self, $workload ) = @_;
+        return YAML::XS::Load($workload);
+    }
+
+
+=head2 Decode
+
+This will automatically look for a method C<decode> in this object
+which has to be defined in the subclass. It will call the C<decode>
+method passing the workload value (C<<$job->workload>>). The return
+value of the C<decode> method will be passed as 3rd argument to the
+job method. This is useful to deserialize JSON workload to Perl
+datastructures for example. If this attribute is not set,
+C<<$job->workload>> and C<$workload> is the same.
+
+Example, workload is this string: C<{"status":1,"message":"OK"}>
+
+    sub decode {
+        my ( $self, $workload ) = @_;
+        return JSON::XS::decode_json($workload);
+    }
+
+    sub job1 : Job {
+        my ( $self, $job, $workload ) = @_;
+        # $workload eq $job->workload eq '{"status":1,"message":"OK"}'
+    }
+
+    sub job2 : Job : Decode {
+        my ( $self, $job, $workload ) = @_;
+        # $workload ne $job->workload
+        # $job->workload eq '{"status":1,"message":"OK"}'
+        # $workload = { status => 1, message => 'OK' }
+    }
+
 
 =head1 METHODS
 
@@ -137,26 +216,13 @@ The parameters are the same as in the job method:
 
 sub end { }
 
-sub _parse_attributes {
-    my ( $self, $attributes ) = @_;
+sub decode {
+    my ( $self, $result ) = @_;
+    return $result;
+}
 
-    my @valid_attributes = qw(MinChilds MaxChilds Job);
-
-    my $result = {
-        MinChilds => 1,
-        MaxChilds => 1,
-    };
-
-    foreach my $attr (@$attributes) {
-        my ( $type, $value ) = $attr =~ / (\w+) (?: \( (\d+) \) )*/x;
-        $value ||= 1;
-        unless ( grep $type eq $_, @valid_attributes ) {
-            warn "Invalid attribute '$attr' in " . ref($self);
-            next;
-        }
-        $result->{$type} = $value if defined $result->{$type};
-    }
-
+sub encode {
+    my ( $self, $result ) = @_;
     return $result;
 }
 
