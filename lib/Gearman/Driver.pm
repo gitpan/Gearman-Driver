@@ -11,7 +11,7 @@ use MooseX::Types::Path::Class;
 use POE;
 with qw(MooseX::Log::Log4perl MooseX::Getopt);
 
-our $VERSION = '0.01002';
+our $VERSION = '0.01003';
 
 =head1 NAME
 
@@ -235,7 +235,7 @@ has 'logfile' => (
     coerce        => 1,
     default       => 'gearman_driver.log',
     documentation => 'Path to logfile (default: gearman_driver.log)',
-    is            => 'ro',
+    is            => 'rw',
     isa           => 'Path::Class::File',
 );
 
@@ -256,7 +256,7 @@ See also L<Log::Log4perl>.
 has 'loglayout' => (
     default       => '[%d] %m%n',
     documentation => 'Log message layout (default: [%d] %m%n)',
-    is            => 'ro',
+    is            => 'rw',
     isa           => 'Str',
 );
 
@@ -277,8 +277,30 @@ See also L<Log::Log4perl>.
 has 'loglevel' => (
     default       => 'INFO',
     documentation => 'Log level (default: INFO)',
-    is            => 'ro',
+    is            => 'rw',
     isa           => 'Str',
+);
+
+=head2 lib
+
+This is just for convenience to extend C<@INC> from command line
+using C<gearman_driver.pl>:
+
+    gearman_driver.pl --lib ./lib --lib /custom/lib --namespaces My::Workers
+
+=over 4
+
+=item * isa: C<Str>
+
+=back
+
+=cut
+
+has 'lib' => (
+    default       => sub { [] },
+    documentation => 'Example: --lib ./lib --lib /custom/lib',
+    is            => 'rw',
+    isa           => 'ArrayRef[Str]',
 );
 
 =head2 unknown_job_callback
@@ -459,6 +481,7 @@ Returns the job instance.
 
 sub BUILD {
     my ($self) = @_;
+    push @INC, @{ $self->lib };
     $self->_setup_logger;
     $self->_load_namespaces;
     $self->_start_observer;
@@ -507,7 +530,8 @@ sub _load_namespaces {
 sub _is_valid_worker_subclass {
     my ( $self, $module ) = @_;
     return 0 unless $module->can('meta');
-    return 0 unless grep $_ eq 'Gearman::Driver::Worker', $module->meta->superclasses;
+    return 0 unless $module->meta->can('linearized_isa');
+    return 0 unless grep $_ eq 'Gearman::Driver::Worker', $module->meta->linearized_isa;
     return 1;
 }
 
