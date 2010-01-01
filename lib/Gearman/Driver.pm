@@ -11,7 +11,7 @@ use MooseX::Types::Path::Class;
 use POE;
 with qw(MooseX::Log::Log4perl MooseX::Getopt);
 
-our $VERSION = '0.01003';
+our $VERSION = '0.01004';
 
 =head1 NAME
 
@@ -247,15 +247,15 @@ See also L<Log::Log4perl>.
 
 =item * isa: C<Str>
 
-=item * default: C<[%d] %m%n>
+=item * default: C<[%d] %p %m%n>
 
 =back
 
 =cut
 
 has 'loglayout' => (
-    default       => '[%d] %m%n',
-    documentation => 'Log message layout (default: [%d] %m%n)',
+    default       => '[%d] %p %m%n',
+    documentation => 'Log message layout (default: [%d] %p %m%n)',
     is            => 'rw',
     isa           => 'Str',
 );
@@ -507,7 +507,9 @@ sub _load_namespaces {
 
     my @modules = ();
     foreach my $ns ( $self->get_namespaces ) {
-        push @modules, useall $ns;
+        my @modules_ns = useall $ns;
+        push @modules, @modules_ns;
+        $self->log->debug("Module found in namespace '$ns': $_") for @modules_ns;
     }
 
     unless (@modules) {
@@ -522,7 +524,7 @@ sub _load_namespaces {
     }
 
     unless ( $self->has_modules ) {
-        my $modules = join ', ', @modules;
+        my $modules = join ', ', sort @modules;
         croak "None of the modules have a method with 'Job' attribute set: $modules";
     }
 }
@@ -566,15 +568,18 @@ sub _observer_callback {
                 my $free = $job->max_childs - $job->count_childs;
                 if ($free) {
                     my $start = $diff > $free ? $free : $diff;
+                    $self->log->debug( sprintf "Starting %d new jobs of type %s", $start, $row->{name} );
                     $job->add_child for 1 .. $start;
                 }
             }
             elsif ( $job->count_childs && $job->count_childs > $job->min_childs && $row->{queue} == 0 ) {
                 my $stop = $job->count_childs - $job->min_childs;
+                $self->log->debug( sprintf "Stopping %d jobs of type %s", $stop, $row->{name} );
                 $job->remove_child for 1 .. $stop;
             }
             elsif ( $job->count_childs < $job->min_childs ) {
                 my $start = $job->min_childs - $job->count_childs;
+                $self->log->debug( sprintf "Starting %d new jobs of type %s", $start, $row->{name} );
                 $job->add_child for 1 .. $start;
             }
         }
@@ -638,6 +643,7 @@ sub _start_jobs {
                 $job->add_child();
             }
             $self->_set_job( $name => $job );
+            $self->log->debug( sprintf "Added new job: $name (childs: %d)", $method->get_attribute('MinChilds') );
         }
     }
 }
