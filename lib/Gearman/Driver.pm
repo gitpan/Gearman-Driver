@@ -11,7 +11,7 @@ use MooseX::Types::Path::Class;
 use POE;
 with qw(MooseX::Log::Log4perl MooseX::Getopt);
 
-our $VERSION = '0.01004';
+our $VERSION = '0.01005';
 
 =head1 NAME
 
@@ -96,7 +96,7 @@ See also: L<namespaces|/namespaces>. If you do not set
 L<server|/server> (gearmand) attribute the default will be used:
 C<localhost:4730>
 
-Each module found in your namespace will be loaded and introspected,
+Each module found in your namespaces will be loaded and introspected,
 looking for methods having the 'Job' attribute set:
 
     package My::Workers::ONE;
@@ -568,18 +568,18 @@ sub _observer_callback {
                 my $free = $job->max_childs - $job->count_childs;
                 if ($free) {
                     my $start = $diff > $free ? $free : $diff;
-                    $self->log->debug( sprintf "Starting %d new jobs of type %s", $start, $row->{name} );
+                    $self->log->debug( sprintf "Starting %d new child(s) of type %s", $start, $row->{name} );
                     $job->add_child for 1 .. $start;
                 }
             }
             elsif ( $job->count_childs && $job->count_childs > $job->min_childs && $row->{queue} == 0 ) {
                 my $stop = $job->count_childs - $job->min_childs;
-                $self->log->debug( sprintf "Stopping %d jobs of type %s", $stop, $row->{name} );
+                $self->log->debug( sprintf "Stopping %d child(s) of type %s", $stop, $row->{name} );
                 $job->remove_child for 1 .. $stop;
             }
             elsif ( $job->count_childs < $job->min_childs ) {
                 my $start = $job->min_childs - $job->count_childs;
-                $self->log->debug( sprintf "Starting %d new jobs of type %s", $start, $row->{name} );
+                $self->log->debug( sprintf "Starting %d new child(s) of type %s", $start, $row->{name} );
                 $job->add_child for 1 .. $start;
             }
         }
