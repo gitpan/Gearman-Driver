@@ -33,4 +33,4 @@ requires:
   POE: 1.280
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.01006
+version: 0.01007

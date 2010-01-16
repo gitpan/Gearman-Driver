@@ -34,7 +34,9 @@ t/lib/Base/TestWorker.pm
 t/lib/Live/NS1/Basic.pm
 t/lib/Live/NS1/BeginEnd.pm
 t/lib/Live/NS1/Decode.pm
+t/lib/Live/NS1/DefaultAttributes.pm
 t/lib/Live/NS1/Encode.pm
+t/lib/Live/NS1/OverrideAttributes.pm
 t/lib/Live/NS1/Spread.pm
 t/lib/Live/NS2/BeginEnd.pm
 t/lib/Live/NS2/Ping1.pm
