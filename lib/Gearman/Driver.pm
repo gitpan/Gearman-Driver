@@ -11,7 +11,7 @@ use MooseX::Types::Path::Class;
 use POE;
 with qw(MooseX::Log::Log4perl MooseX::Getopt);
 
-our $VERSION = '0.01007';
+our $VERSION = '0.01008';
 
 =head1 NAME
 
@@ -481,13 +481,16 @@ Returns the job instance.
 
 sub BUILD {
     my ($self) = @_;
+    $self->_setup;
+}
+
+sub _setup {
+    my ($self) = @_;
     push @INC, @{ $self->lib };
     $self->_setup_logger;
     $self->_load_namespaces;
     $self->_start_observer;
     $self->_start_session;
-
-    # $self->_start_jobs;
 }
 
 sub _setup_logger {
@@ -508,7 +511,13 @@ sub _load_namespaces {
     my @modules = ();
     foreach my $ns ( $self->get_namespaces ) {
         my @modules_ns = useall $ns;
+
+        # Module::Find::useall($ns) does not load $ns itself
+        eval "use $ns";
+        push @modules_ns, $ns unless $@;
+
         push @modules, @modules_ns;
+
         $self->log->debug("Module found in namespace '$ns': $_") for @modules_ns;
     }
 
@@ -549,14 +558,16 @@ sub _has_job_method {
 
 sub _start_observer {
     my ($self) = @_;
-    $self->{observer} = Gearman::Driver::Observer->new(
-        callback => sub {
-            my ($status) = @_;
-            $self->_observer_callback($status);
-        },
-        interval => $self->interval,
-        server   => $self->server,
-    );
+    if ($self->interval > 0) {
+        $self->{observer} = Gearman::Driver::Observer->new(
+            callback => sub {
+                my ($status) = @_;
+                $self->_observer_callback($status);
+            },
+            interval => $self->interval,
+            server   => $self->server,
+        );
+    }
 }
 
 sub _observer_callback {
@@ -657,6 +668,10 @@ __PACKAGE__->meta->make_immutable;
 =head1 AUTHOR
 
 Johannes Plunien E<lt>plu@cpan.orgE<gt>
+
+=head1 CONTRIBUTORS
+
+Uwe Voelker, <uwe.voelker@gmx.de>
 
 =head1 COPYRIGHT AND LICENSE
 

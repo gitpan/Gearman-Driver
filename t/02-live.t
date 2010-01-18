@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More tests => 22;
+use Test::More tests => 23;
 use FindBin;
 use lib "$FindBin::Bin/lib";
 use TestLib;
@@ -141,4 +141,9 @@ for ( 1 .. 5 ) {
             'Encode/decode override attributes'
         );
     }
+}
+
+{
+    my ( $ret, $string ) = $gc->do( 'Live::job' => 'some workload ...' );
+    is( $string, 'ok', 'loaded root namespace' );
 }

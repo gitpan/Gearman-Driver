@@ -31,6 +31,7 @@ t/02-live.t
 t/gearman_driver.pl
 t/gearmand.pl
 t/lib/Base/TestWorker.pm
+t/lib/Live.pm
 t/lib/Live/NS1/Basic.pm
 t/lib/Live/NS1/BeginEnd.pm
 t/lib/Live/NS1/Decode.pm
