@@ -1,31 +1,35 @@
 use strict;
 use warnings;
-use Test::More tests => 4;
+use Test::More tests => 5;
+use Test::Exception;
 use FindBin;
 use lib "$FindBin::Bin/lib";
 use Gearman::Driver;
 use POE;
 
-eval { Gearman::Driver->new(); };
+POE::Kernel->run();
 
-like( $@, qr/Attribute \(namespaces\) is required/, 'Mandatory parameters missing' );
+my $driver = Gearman::Driver->new( interval => 0 );
+my %params = ();
 
-eval { Gearman::Driver->new( namespaces => [qw(Foo Bar Bla::Fasel)] ); };
+throws_ok { $driver->add_job( \%params ) }
+qr/Attribute \(min_childs\) does not pass the type constraint because: Validation failed for 'Int' failed with value undef/,
+  'min_childs undef';
 
-like( $@, qr/Could not find any modules in those namespaces: Bar, Bla::Fasel, Foo/, 'No modules found' );
+$params{min_childs} = 0;
+throws_ok { $driver->add_job( \%params ) }
+qr/Attribute \(method\) does not pass the type constraint because: Validation failed for 'CodeRef' failed with value undef/,
+  'method undef';
 
-eval { Gearman::Driver->new( namespaces => [qw(Validate::Invalid)] ); };
+$params{method} = sub { };
+throws_ok { $driver->add_job( \%params ) }
+qr/Attribute \(name\) does not pass the type constraint because: Validation failed for 'Str' failed with value undef/,
+  'name undef';
 
-like(
-    $@,
-qr/None of the modules have a method with 'Job' attribute set: Validate::Invalid::NS1::Something, Validate::Invalid::NS2::Something1, Validate::Invalid::NS2::Something2, Validate::Invalid::NS2::SubNS::Something, Validate::Invalid::Something/,
-    'None of the modules found have correct inheritance'
-);
+$params{name} = 'some_job';
+throws_ok { $driver->add_job( \%params ) }
+qr/Attribute \(max_childs\) does not pass the type constraint because: Validation failed for 'Int' failed with value undef/,
+  'max_childs undef';
 
-eval { Gearman::Driver->new( namespaces => [qw(Validate::NoJobs)] ); };
-
-like(
-    $@,
-qr/None of the modules have a method with 'Job' attribute set: Validate::NoJobs::NS1::Something, Validate::NoJobs::Something/,
-    'None of the modules found have correct job methods'
-);
+$params{max_childs} = 1;
+ok( $driver->add_job( \%params ), 'add_job successful' );

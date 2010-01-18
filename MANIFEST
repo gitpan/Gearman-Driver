@@ -20,6 +20,7 @@ lib/Gearman/Driver/Job.pm
 lib/Gearman/Driver/Observer.pm
 lib/Gearman/Driver/Worker.pm
 lib/Gearman/Driver/Worker/AttributeParser.pm
+lib/Gearman/Driver/Worker/Base.pm
 Makefile.PL
 MANIFEST			This list of files
 META.yml
@@ -43,6 +44,7 @@ t/lib/Live/NS2/BeginEnd.pm
 t/lib/Live/NS2/Ping1.pm
 t/lib/Live/NS2/Ping2.pm
 t/lib/Live/NS2/UseBase.pm
+t/lib/Live/NS3/AddJob.pm
 t/lib/TestLib.pm
 t/lib/Validate/Invalid/NS1/Something.pm
 t/lib/Validate/Invalid/NS2/Something1.pm
