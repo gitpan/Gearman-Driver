@@ -2,6 +2,7 @@ package Gearman::Driver;
 
 use Moose;
 use Moose::Util qw(apply_all_roles);
+use Class::MOP;
 use Carp qw(croak);
 use Gearman::Driver::Observer;
 use Gearman::Driver::Job;
@@ -11,7 +12,7 @@ use MooseX::Types::Path::Class;
 use POE;
 with qw(MooseX::Log::Log4perl MooseX::Getopt);
 
-our $VERSION = '0.01009';
+our $VERSION = '0.01010';
 
 =head1 NAME
 
@@ -140,12 +141,14 @@ See also: L<prefix|Gearman::Driver::Worker/prefix>
 
 =head2 namespaces
 
-Will be passed to L<Module::Find> C<useall> method to load worker
+Will be passed to L<Module::Find> C<findallmod> method to load worker
 modules. Each one of those modules has to be inherited from
 L<Gearman::Driver::Worker> or a subclass of it. It's also possible
 to use the full package name to load a single module/file. There is
 also a method L<get_namespaces|Gearman::Driver/get_namespaces> which
 returns a sorted list of all namespaces.
+
+See also: L</wanted>.
 
 =over 4
 
@@ -158,12 +161,81 @@ returns a sorted list of all namespaces.
 =cut
 
 has 'namespaces' => (
+    default       => sub              { [] },
     documentation => 'Example: --namespaces My::Workers --namespaces My::OtherWorkers',
     handles       => { get_namespaces => 'sort' },
     is            => 'rw',
     isa           => 'ArrayRef[Str]',
     required      => 0,
     traits        => [qw(Array)],
+);
+
+=head2 wanted
+
+=over 4
+
+=item * isa: C<CodeRef>
+
+=item * required: C<False>
+
+=back
+
+This CodeRef will be called on each of the modules found in your
+L</namespace>. The first and only parameter to this sub is the name
+of the module. If a true value is returned, the module will be
+loaded and checked if it's a valid L<Gearman::Driver::Worker>
+subclass.
+
+Let's say you have a namespace called C<My::Project>:
+
+=over 4
+
+=item * My::Project::Web
+
+=item * My::Project::Web::Controller::Root
+
+=item * My::Project::Web::Controller::Admin
+
+=item * My::Project::Web::Controller::User
+
+=item * My::Project::Web::Model::DBIC
+
+=item * My::Project::Worker::ScaleImage
+
+=item * My::Project::Worker::RemoveUser
+
+=back
+
+To avoid every module being loaded and inspected being a
+L<Gearman::Driver::Worker> subclass you can use C<wanted>
+to only load classes having C<Worker> in the package name:
+
+    my $driver = Gearman::Driver->new(
+        interval   => 0,
+        namespaces => [qw(My::Project)],
+        wanted     => sub {
+            return 1 if /Worker/;
+            return 0;
+        },
+    );
+
+This would only load:
+
+=over 4
+
+=item * My::Project::Worker::ScaleImage
+
+=item * My::Project::Worker::RemoveUser
+
+=back
+
+=cut
+
+has 'wanted' => (
+    is        => 'rw',
+    isa       => 'CodeRef',
+    predicate => 'has_wanted',
+    traits    => [qw(NoGetopt)],
 );
 
 =head2 server
@@ -478,8 +550,8 @@ Object that should be passed as first parameter to the job method.
 =back
 
 Basically you never really need this method if you use
-L</namespaces>. But this depends on method attributes which some
-people do hate. In this case, feel free to setup Gearman::Driver
+L</namespaces>. But L</namespaces> depend on method attributes which
+some people do hate. In this case, feel free to setup your C<$driver>
 this way:
 
     package My::Workers::One;
@@ -625,11 +697,14 @@ sub _load_namespaces {
 
     my @modules = ();
     foreach my $ns ( $self->get_namespaces ) {
-        my @modules_ns = useall $ns;
+        my @modules_ns = findallmod $ns;
 
-        # Module::Find::useall($ns) does not load $ns itself
-        eval "use $ns";
-        push @modules_ns, $ns unless $@;
+        # Module::Find::findallmod($ns) does not load $ns itself
+        push @modules_ns, $ns;
+
+        if ( $self->has_wanted ) {
+            @modules_ns = grep { $self->wanted->($_) } @modules_ns;
+        }
 
         push @modules, @modules_ns;
 
@@ -637,6 +712,7 @@ sub _load_namespaces {
     }
 
     foreach my $module (@modules) {
+        Class::MOP::load_class($module);
         next unless $self->_is_valid_worker_subclass($module);
         next unless $self->_has_job_method($module);
         $self->_add_module($module);

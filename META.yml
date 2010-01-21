@@ -32,6 +32,7 @@ requires:
   MooseX::Types::Path::Class: 0.05
   Net::Telnet::Gearman: 0.01000
   POE: 1.280
+  Try::Tiny: 0.02
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.01009
+version: 0.01010
