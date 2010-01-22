@@ -5,14 +5,16 @@ use Moose::Util qw(apply_all_roles);
 use Class::MOP;
 use Carp qw(croak);
 use Gearman::Driver::Observer;
+use Gearman::Driver::Console;
 use Gearman::Driver::Job;
 use Log::Log4perl qw(:easy);
 use Module::Find;
 use MooseX::Types::Path::Class;
 use POE;
+use Try::Tiny;
 with qw(MooseX::Log::Log4perl MooseX::Getopt);
 
-our $VERSION = '0.01010';
+our $VERSION = '0.01011';
 
 =head1 NAME
 
@@ -263,6 +265,30 @@ has 'server' => (
     required      => 1,
 );
 
+=head2 console_port
+
+Gearman::Driver has a telnet management console, see also:
+
+L<Gearman::Driver::Console>
+
+=over 4
+
+=item * default: C<47300>
+
+=item * isa: C<Int>
+
+=back
+
+=cut
+
+has 'console_port' => (
+    default       => 47300,
+    documentation => 'Port of management console (default: 47300)',
+    is            => 'rw',
+    isa           => 'Int',
+    required      => 1,
+);
+
 =head2 interval
 
 Each n seconds L<Net::Telnet::Gearman> is used in
@@ -509,6 +535,26 @@ has 'observer' => (
     traits => [qw(NoGetopt)],
 );
 
+=head2 console
+
+Instance of L<Gearman::Driver::Console>.
+
+=over 4
+
+=item * isa: C<Gearman::Driver::Console>
+
+=item * readonly: C<True>
+
+=back
+
+=cut
+
+has 'console' => (
+    is     => 'ro',
+    isa    => 'Gearman::Driver::Console',
+    traits => [qw(NoGetopt)],
+);
+
 has '+logger' => ( traits => [qw(NoGetopt)] );
 
 =head1 METHODS
@@ -645,6 +691,7 @@ sub run {
     push @INC, @{ $self->lib };
     $self->_load_namespaces;
     $self->_start_observer;
+    $self->_start_console;
     $self->_start_session;
     POE::Kernel->run();
 }
@@ -712,7 +759,9 @@ sub _load_namespaces {
     }
 
     foreach my $module (@modules) {
-        Class::MOP::load_class($module);
+        try {
+            Class::MOP::load_class($module);
+        };
         next unless $self->_is_valid_worker_subclass($module);
         next unless $self->_has_job_method($module);
         $self->_add_module($module);
@@ -751,6 +800,14 @@ sub _start_observer {
     }
 }
 
+sub _start_console {
+    my ($self) = @_;
+    $self->{console} = Gearman::Driver::Console->new(
+        driver => $self,
+        port   => $self->console_port,
+    );
+}
+
 sub _observer_callback {
     my ( $self, $status ) = @_;
     foreach my $row (@$status) {
@@ -769,11 +826,6 @@ sub _observer_callback {
                 $self->log->debug( sprintf "Stopping %d child(s) of type %s", $stop, $row->{name} );
                 $job->remove_child for 1 .. $stop;
             }
-            elsif ( $job->count_childs < $job->min_childs ) {
-                my $start = $job->min_childs - $job->count_childs;
-                $self->log->debug( sprintf "Starting %d new child(s) of type %s", $start, $row->{name} );
-                $job->add_child for 1 .. $start;
-            }
         }
         else {
             $self->unknown_job_callback->( $self, $row ) if $row->{queue} > 0;
@@ -786,8 +838,9 @@ sub _start_session {
     POE::Session->create(
         object_states => [
             $self => {
-                _start  => '_start',
-                got_sig => '_on_sig',
+                _start         => '_start',
+                got_sig        => '_on_sig',
+                monitor_childs => '_monitor_childs',
             }
         ]
     );
@@ -812,6 +865,7 @@ sub _start {
     $_[KERNEL]->sig( $_ => 'got_sig' ) for qw(INT QUIT ABRT KILL TERM);
     $_[OBJECT]->_add_jobs;
     $_[OBJECT]->_start_jobs;
+    $_[KERNEL]->delay( monitor_childs => 5 );
 }
 
 sub _add_jobs {
@@ -854,6 +908,18 @@ sub _start_jobs {
     }
 }
 
+sub _monitor_childs {
+    my $self = $_[OBJECT];
+    foreach my $job ( $self->get_jobs ) {
+        if ( $job->count_childs < $job->min_childs ) {
+            my $start = $job->min_childs - $job->count_childs;
+            $self->log->debug( sprintf "Starting %d new child(s) of type %s", $start, $job->name );
+            $job->add_child for 1 .. $start;
+        }
+    }
+    $_[KERNEL]->delay( monitor_childs => 5 );
+}
+
 no Moose;
 
 __PACKAGE__->meta->make_immutable;
@@ -877,9 +943,11 @@ it under the same terms as Perl itself.
 
 =over 4
 
-=item * L<Gearman::Driver::Observer>
+=item * L<Gearman::Driver::Console>
 
 =item * L<Gearman::Driver::Job>
+
+=item * L<Gearman::Driver::Observer>
 
 =item * L<Gearman::Driver::Worker>
 

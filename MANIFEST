@@ -16,6 +16,7 @@ inc/Module/Install/Scripts.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
 lib/Gearman/Driver.pm
+lib/Gearman/Driver/Console.pm
 lib/Gearman/Driver/Job.pm
 lib/Gearman/Driver/Observer.pm
 lib/Gearman/Driver/Worker.pm
