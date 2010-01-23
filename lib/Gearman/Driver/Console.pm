@@ -33,7 +33,7 @@ be used with a standard telnet client. It's possible to list all
 running worker processes as well as changing min/max processes
 on runtime.
 
-Each successful L<command|/COMMANDS> ends with a colon. If a
+Each successful L<command|/COMMANDS> ends with a dot. If a
 command throws an error, a line starting with 'ERR' will be
 returned.
 
@@ -78,7 +78,8 @@ sub BUILD {
                     $heap->{client}->put($_);
                 };
             }
-            elsif ($command eq 'quit') {
+            elsif ( $command eq 'quit' ) {
+                delete $heap->{client};
             }
             else {
                 $heap->{client}->put("ERR unknown_command: $command");
@@ -104,11 +105,11 @@ Columns are separated by tabs in this order:
 
 =item * job_name
 
-=item * min_childs
+=item * min_processes
 
-=item * max_childs
+=item * max_processes
 
-=item * current_childs
+=item * current_processes
 
 =back
 
@@ -118,75 +119,80 @@ sub status {
     my ($self) = @_;
     my @result = ();
     foreach my $job ( $self->driver->get_jobs ) {
-        push @result, sprintf( "%s\t%d\t%d\t%d", $job->name, $job->min_childs, $job->max_childs, $job->count_childs );
+        push @result,
+          sprintf( "%s\t%d\t%d\t%d", $job->name, $job->min_processes, $job->max_processes, $job->count_processes );
     }
     return @result;
 }
 
-=head2 set_min_childs
+=head2 set_min_processes
 
-Parameters: C<job_name min_childs>
+Parameters: C<job_name min_processes>
 
-    set_min_childs asdf 5
+    set_min_processes asdf 5
     ERR invalid_job_name: asdf
-    set_min_childs GDExamples::Sleeper::ZzZzZzzz ten
-    ERR invalid_value: min_childs must be >= 0
-    set_min_childs GDExamples::Sleeper::ZzZzZzzz 10
-    ERR invalid_value: min_childs must be smaller than max_childs
-    set_min_childs GDExamples::Sleeper::ZzZzZzzz 5
+    set_min_processes GDExamples::Sleeper::ZzZzZzzz ten
+    ERR invalid_value: min_processes must be >= 0
+    set_min_processes GDExamples::Sleeper::ZzZzZzzz 10
+    ERR invalid_value: min_processes must be smaller than max_processes
+    set_min_processes GDExamples::Sleeper::ZzZzZzzz 5
     OK
     .
 
 =cut
 
-sub set_min_childs {
-    my ( $self, $job_name, $min_childs ) = @_;
+*set_min_childs = \&set_min_processes;
+
+sub set_min_processes {
+    my ( $self, $job_name, $min_processes ) = @_;
 
     my $job = $self->_get_job($job_name);
 
-    if ( !defined($min_childs) or $min_childs !~ /^\d+$/ or $min_childs < 0 ) {
-        die "ERR invalid_value: min_childs must be >= 0\n";
+    if ( !defined($min_processes) or $min_processes !~ /^\d+$/ or $min_processes < 0 ) {
+        die "ERR invalid_value: min_processes must be >= 0\n";
     }
 
-    if ( $min_childs > $job->max_childs ) {
-        die "ERR invalid_value: min_childs must be smaller than max_childs\n";
+    if ( $min_processes > $job->max_processes ) {
+        die "ERR invalid_value: min_processes must be smaller than max_processes\n";
     }
 
-    $job->min_childs($min_childs);
+    $job->min_processes($min_processes);
 
     return "OK";
 }
 
-=head2 set_max_childs
+=head2 set_max_processes
 
-Parameters: C<job_name max_childs>
+Parameters: C<job_name max_processes>
 
-    set_max_childs asdf 5
+    set_max_processes asdf 5
     ERR invalid_job_name: asdf
-    set_max_childs GDExamples::Sleeper::ZzZzZzzz ten
-    ERR invalid_value: max_childs must be >= 0
-    set_max_childs GDExamples::Sleeper::ZzZzZzzz 0
-    ERR invalid_value: max_childs must be greater than min_childs
-    set_max_childs GDExamples::Sleeper::ZzZzZzzz 6
+    set_max_processes GDExamples::Sleeper::ZzZzZzzz ten
+    ERR invalid_value: max_processes must be >= 0
+    set_max_processes GDExamples::Sleeper::ZzZzZzzz 0
+    ERR invalid_value: max_processes must be greater than min_processes
+    set_max_processes GDExamples::Sleeper::ZzZzZzzz 6
     OK
     .
 
 =cut
 
-sub set_max_childs {
-    my ( $self, $job_name, $max_childs ) = @_;
+*set_max_childs = \&set_max_processes;
+
+sub set_max_processes {
+    my ( $self, $job_name, $max_processes ) = @_;
 
     my $job = $self->_get_job($job_name);
 
-    if ( !defined($max_childs) or $max_childs !~ /^\d+$/ or $max_childs < 0 ) {
-        die "ERR invalid_value: max_childs must be >= 0\n";
+    if ( !defined($max_processes) or $max_processes !~ /^\d+$/ or $max_processes < 0 ) {
+        die "ERR invalid_value: max_processes must be >= 0\n";
     }
 
-    if ( $max_childs < $job->min_childs ) {
-        die "ERR invalid_value: max_childs must be greater than min_childs\n";
+    if ( $max_processes < $job->min_processes ) {
+        die "ERR invalid_value: max_processes must be greater than min_processes\n";
     }
 
-    $job->max_childs($max_childs);
+    $job->max_processes($max_processes);
 
     return "OK";
 }
@@ -197,7 +203,18 @@ Parameters: C<none>
 
 Closes your connection gracefully.
 
+=head2 shutdown
+
+Parameters: C<none>
+
+Shuts L<Gearman::Driver> down.
+
 =cut
+
+sub shutdown {
+    my ($self) = @_;
+    $self->driver->shutdown;
+}
 
 sub _get_job {
     my ( $self, $job_name ) = @_;
