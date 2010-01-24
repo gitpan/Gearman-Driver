@@ -6,13 +6,14 @@ use lib "$FindBin::Bin/lib";
 use TestLib;
 use File::Slurp;
 use File::Temp qw(tempfile);
-use Net::Telnet;
 
 my $test = TestLib->new();
 my $gc   = $test->gearman_client;
 
 $test->run_gearmand;
 $test->run_gearman_driver;
+
+my $telnet = $test->telnet_client;
 
 # give gearmand + driver at least 5 seconds to settle
 foreach my $namespace (qw(Live::NS1::Basic Live::NS1::BasicChilds)) {
@@ -50,12 +51,6 @@ foreach my $namespace (qw(Live::NS1::Basic Live::NS1::BasicChilds)) {
 
 # Let's change min/max processes via console
 {
-    my $telnet = Net::Telnet->new(
-        Timeout => 5,
-        Host    => '127.0.0.1',
-        Port    => 47300,
-    );
-    $telnet->open;
     $telnet->print('set_min_processes Live::NS1::Basic::ten_processes 5');
     $telnet->print('set_max_processes Live::NS1::Basic::ten_processes 5');
     my %pids = ();
@@ -67,7 +62,6 @@ foreach my $namespace (qw(Live::NS1::Basic Live::NS1::BasicChilds)) {
     is( scalar( keys(%pids) ), 5, "5 different processes handled job 'ten_processes'" );
     $telnet->print('set_min_processes Live::NS1::Basic::ten_processes 10');
     $telnet->print('set_max_processes Live::NS1::Basic::ten_processes 10');
-    $telnet->close;
 }
 
 {
@@ -227,3 +221,5 @@ foreach my $namespace (qw(Live::NS3::AddJob Live::NS3::AddJobChilds)) {
         ok( $time >= 2, 'Job "Live::NS3::AddJob::sleeper" returned in more than 2 seconds' );
     }
 }
+
+$telnet->print('shutdown');

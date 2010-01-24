@@ -31,6 +31,7 @@ t/00-use.t
 t/01-validate.t
 t/02-live.t
 t/03-namespaces.t
+t/04-console.t
 t/gearman_driver.pl
 t/gearmand.pl
 t/lib/Base/TestWorker.pm

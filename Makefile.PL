@@ -1,9 +1,5 @@
 use inc::Module::Install 0.91;
 
-if ( -e 'MANIFEST.SKIP' ) {
-    system('pod2text lib/Gearman/Driver.pm > README');
-}
-
 name 'Gearman-Driver';
 all_from 'lib/Gearman/Driver.pm';
 
@@ -21,12 +17,22 @@ requires(
 );
 
 test_requires(
-    'File::Slurp'     => 0,
-    'File::Temp'      => 0,
-    'Net::Telnet'     => 0,
-    'Test::Exception' => 0,
-    'Test::More'      => 0,
+    'File::Slurp'       => 0,
+    'File::Temp'        => 0,
+    'Net::Telnet'       => 0,
+    'Test::Differences' => 0,
+    'Test::Exception'   => 0,
+    'Test::More'        => 0,
 );
+
+my @tests = ('t/*.t');
+
+if ( -e 'MANIFEST.SKIP' ) {
+    system('pod2text lib/Gearman/Driver.pm > README');
+    unshift @tests, 'xt/*.t';
+}
+
+tests join ' ', @tests;
 
 install_script( glob('script/*.pl') );
 

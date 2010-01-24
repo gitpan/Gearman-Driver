@@ -14,7 +14,7 @@ use POE;
 use Try::Tiny;
 with qw(MooseX::Log::Log4perl MooseX::Getopt);
 
-our $VERSION = '0.01012';
+our $VERSION = '0.01013';
 
 =head1 NAME
 
@@ -278,6 +278,8 @@ L<Gearman::Driver::Console>
 =item * isa: C<Int>
 
 =back
+
+Set this to C<0> to disable management console at all.
 
 =cut
 
@@ -822,10 +824,12 @@ sub _start_observer {
 
 sub _start_console {
     my ($self) = @_;
-    $self->{console} = Gearman::Driver::Console->new(
-        driver => $self,
-        port   => $self->console_port,
-    );
+    if ( $self->console_port > 0 ) {
+        $self->{console} = Gearman::Driver::Console->new(
+            driver => $self,
+            port   => $self->console_port,
+        );
+    }
 }
 
 sub _observer_callback {
