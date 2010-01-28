@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More tests => 36;
+use Test::More tests => 42;
 use FindBin;
 use lib "$FindBin::Bin/lib";
 use TestLib;
@@ -65,8 +65,24 @@ foreach my $namespace (qw(Live::NS1::Basic Live::NS1::BasicChilds)) {
 }
 
 {
+    my ( $first_ret, $first_pid ) = $gc->do( 'Live::NS1::Basic::get_pid' => '' );
+    like( $first_pid, qr~^\d+$~, 'Job "get_pid" returned correct value' );
+
+    # test max_idle_time (5)
+    for ( 1 .. 3 ) {
+        sleep($_);
+        my ( $ret, $pid ) = $gc->do( 'Live::NS1::Basic::get_pid' => '' );
+        is( $first_pid, $pid, 'Still the same PID' );
+    }
+
+    sleep(6);
     my ( $ret, $pid ) = $gc->do( 'Live::NS1::Basic::get_pid' => '' );
-    like( $pid, qr~^\d+$~, 'Job "get_pid" returned correct value' );
+    isnt( $first_pid, $pid, 'Got another PID' );
+
+    # The worker really killed after it has been idle. Famous last words!
+    ( $ret, $first_pid ) = $gc->do( 'Live::NS1::Basic::sleepy_pid' => '10' );
+    like( $first_pid, qr/^\d+$/, 'Got PID' );
+    isnt( $first_pid, $pid, 'Got another PID' );
 }
 
 {

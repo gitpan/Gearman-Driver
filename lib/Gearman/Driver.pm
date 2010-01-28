@@ -8,13 +8,11 @@ use Gearman::Driver::Observer;
 use Gearman::Driver::Console;
 use Gearman::Driver::Job;
 use Log::Log4perl qw(:easy);
-use Module::Find;
 use MooseX::Types::Path::Class;
 use POE;
-use Try::Tiny;
-with qw(MooseX::Log::Log4perl MooseX::Getopt);
+with qw(MooseX::Log::Log4perl MooseX::Getopt Gearman::Driver::Loader);
 
-our $VERSION = '0.01014';
+our $VERSION = '0.01015';
 
 =head1 NAME
 
@@ -141,104 +139,7 @@ See also: L<prefix|Gearman::Driver::Worker/prefix>
 
 =head1 ATTRIBUTES
 
-=head2 namespaces
-
-Will be passed to L<Module::Find> C<findallmod> method to load worker
-modules. Each one of those modules has to be inherited from
-L<Gearman::Driver::Worker> or a subclass of it. It's also possible
-to use the full package name to load a single module/file. There is
-also a method L<get_namespaces|Gearman::Driver/get_namespaces> which
-returns a sorted list of all namespaces.
-
-See also: L</wanted>.
-
-=over 4
-
-=item * isa: C<ArrayRef>
-
-=item * required: C<True>
-
-=back
-
-=cut
-
-has 'namespaces' => (
-    default       => sub              { [] },
-    documentation => 'Example: --namespaces My::Workers --namespaces My::OtherWorkers',
-    handles       => { get_namespaces => 'sort' },
-    is            => 'rw',
-    isa           => 'ArrayRef[Str]',
-    required      => 0,
-    traits        => [qw(Array)],
-);
-
-=head2 wanted
-
-=over 4
-
-=item * isa: C<CodeRef>
-
-=item * required: C<False>
-
-=back
-
-This CodeRef will be called on each of the modules found in your
-L</namespace>. The first and only parameter to this sub is the name
-of the module. If a true value is returned, the module will be
-loaded and checked if it's a valid L<Gearman::Driver::Worker>
-subclass.
-
-Let's say you have a namespace called C<My::Project>:
-
-=over 4
-
-=item * My::Project::Web
-
-=item * My::Project::Web::Controller::Root
-
-=item * My::Project::Web::Controller::Admin
-
-=item * My::Project::Web::Controller::User
-
-=item * My::Project::Web::Model::DBIC
-
-=item * My::Project::Worker::ScaleImage
-
-=item * My::Project::Worker::RemoveUser
-
-=back
-
-To avoid every module being loaded and inspected being a
-L<Gearman::Driver::Worker> subclass you can use C<wanted>
-to only load classes having C<Worker> in the package name:
-
-    my $driver = Gearman::Driver->new(
-        interval   => 0,
-        namespaces => [qw(My::Project)],
-        wanted     => sub {
-            return 1 if /Worker/;
-            return 0;
-        },
-    );
-
-This would only load:
-
-=over 4
-
-=item * My::Project::Worker::ScaleImage
-
-=item * My::Project::Worker::RemoveUser
-
-=back
-
-=cut
-
-has 'wanted' => (
-    is        => 'rw',
-    isa       => 'CodeRef',
-    predicate => 'has_wanted',
-    traits    => [qw(NoGetopt)],
-);
+See also L<Gearman::Driver::Loader/ATTRIBUTES>.
 
 =head2 server
 
@@ -318,6 +219,38 @@ has 'interval' => (
     required      => 1,
 );
 
+=head2 max_idle_time
+
+Whenever L<Gearman::Driver::Observer> notices that there are more
+processes running than actually necessary (depending on min_processes
+and max_processes setting) it will kill them. By default this happens
+immediately. If you change this value to C<300>, a process which is
+not necessary is killed after 300 seconds.
+
+Please remember that this also depends on what value you set
+L</interval> to. The max_idle_time is only checked each n seconds
+where n is L</interval>. Besides that it makes only sense when you
+have workers where L<Gearman::Driver::Worker/MinProcesses> is set to
+C<0>.
+
+=over 4
+
+=item * default: C<0>
+
+=item * isa: C<Int>
+
+=back
+
+=cut
+
+has 'max_idle_time' => (
+    default       => '0',
+    documentation => 'How many seconds a worker may be idle before its killed',
+    is            => 'rw',
+    isa           => 'Int',
+    required      => 1,
+);
+
 =head2 logfile
 
 Path to logfile.
@@ -382,28 +315,6 @@ has 'loglevel' => (
     isa           => 'Str',
 );
 
-=head2 lib
-
-This is just for convenience to extend C<@INC> from command line
-using C<gearman_driver.pl>:
-
-    gearman_driver.pl --lib ./lib --lib /custom/lib --namespaces My::Workers
-
-=over 4
-
-=item * isa: C<Str>
-
-=back
-
-=cut
-
-has 'lib' => (
-    default       => sub { [] },
-    documentation => 'Example: --lib ./lib --lib /custom/lib',
-    is            => 'rw',
-    isa           => 'ArrayRef[Str]',
-);
-
 =head2 unknown_job_callback
 
 Whenever L<Gearman::Driver::Observer> sees a job that isnt handled
@@ -450,35 +361,6 @@ has 'unknown_job_callback' => (
 
 This might be interesting for subclassing L<Gearman::Driver>.
 
-=head2 modules
-
-Every worker module loaded by L<Module::Find> will be added to this
-list. There are also two methods:
-L<get_modules|Gearman::Driver/get_modules> and
-L<has_modules|Gearman::Driver/has_modules>.
-
-=over 4
-
-=item * isa: C<ArrayRef>
-
-=item * readonly: C<True>
-
-=back
-
-=cut
-
-has 'modules' => (
-    default => sub { [] },
-    handles => {
-        _add_module => 'push',
-        get_modules => 'sort',
-        has_modules => 'count',
-    },
-    is     => 'ro',
-    isa    => 'ArrayRef[Str]',
-    traits => [qw(Array NoGetopt)],
-);
-
 =head2 jobs
 
 Stores all L<Gearman::Driver::Job> instances. The key is the name
@@ -509,7 +391,6 @@ has 'jobs' => (
     handles => {
         _set_job => 'set',
         get_job  => 'get',
-        get_jobs => 'values',
         has_job  => 'defined',
     },
     is     => 'ro',
@@ -563,7 +444,9 @@ has 'session' => (
     traits => [qw(NoGetopt)],
 );
 
-has '+logger' => ( traits => [qw(NoGetopt)] );
+has '+logger'  => ( traits => [qw(NoGetopt)] );
+has '+wanted'  => ( traits => [qw(NoGetopt)] );
+has '+modules' => ( traits => [qw(NoGetopt)] );
 
 =head1 METHODS
 
@@ -691,6 +574,21 @@ sub add_job {
     return 1;
 }
 
+=head2 get_jobs
+
+Returns all L<Gearman::Driver::Job> objects ordered by jobname.
+
+=cut
+
+sub get_jobs {
+    my ($self) = @_;
+    my @result = ();
+    foreach my $name ( sort keys %{ $self->jobs } ) {
+        push @result, $self->get_job($name);
+    }
+    return @result;
+}
+
 =head2 run
 
 This must be called after the L<Gearman::Driver> object is instantiated.
@@ -700,7 +598,7 @@ This must be called after the L<Gearman::Driver> object is instantiated.
 sub run {
     my ($self) = @_;
     push @INC, @{ $self->lib };
-    $self->_load_namespaces;
+    $self->load_namespaces;
     $self->_start_observer;
     $self->_start_console;
     $self->_start_session;
@@ -717,18 +615,6 @@ sub shutdown {
     my ($self) = @_;
     POE::Kernel->signal( $self->{session}, 'TERM' );
 }
-
-=head2 get_namespaces
-
-Returns a sorted list of L<namespaces|Gearman::Driver/namespaces>.
-
-=head2 get_modules
-
-Returns a sorted list of L<modules|Gearman::Driver/modules>.
-
-=head2 has_modules
-
-Returns the count of L<modules|Gearman::Driver/modules>.
 
 =head2 has_job
 
@@ -759,53 +645,6 @@ sub _setup_logger {
             level  => $self->loglevel,
         },
     );
-}
-
-sub _load_namespaces {
-    my ($self) = @_;
-
-    my @modules = ();
-    foreach my $ns ( $self->get_namespaces ) {
-        my @modules_ns = findallmod $ns;
-
-        # Module::Find::findallmod($ns) does not load $ns itself
-        push @modules_ns, $ns;
-
-        if ( $self->has_wanted ) {
-            @modules_ns = grep { $self->wanted->($_) } @modules_ns;
-        }
-
-        push @modules, @modules_ns;
-
-        $self->log->debug("Module found in namespace '$ns': $_") for @modules_ns;
-    }
-
-    foreach my $module (@modules) {
-        try {
-            Class::MOP::load_class($module);
-        };
-        next unless $self->_is_valid_worker_subclass($module);
-        next unless $self->_has_job_method($module);
-        $self->_add_module($module);
-    }
-}
-
-sub _is_valid_worker_subclass {
-    my ( $self, $module ) = @_;
-    return 0 unless $module->can('meta');
-    return 0 unless $module->meta->can('linearized_isa');
-    return 0 unless grep $_ eq 'Gearman::Driver::Worker', $module->meta->linearized_isa;
-    return 1;
-}
-
-sub _has_job_method {
-    my ( $self, $module ) = @_;
-    return 0 unless $module->meta->can('get_nearest_methods_with_attributes');
-    foreach my $method ( $module->meta->get_nearest_methods_with_attributes ) {
-        next unless grep $_ eq 'Job', @{ $method->attributes };
-        return 1;
-    }
-    return 0;
 }
 
 sub _start_observer {
@@ -841,14 +680,19 @@ sub _observer_callback {
                 my $free = $job->max_processes - $job->count_processes;
                 if ($free) {
                     my $start = $diff > $free ? $free : $diff;
-                    $self->log->debug( sprintf "Starting %d new process(es) of type %s", $start, $row->{name} );
+                    $self->log->debug( sprintf "Starting %d new process(es) of type %s", $start, $job->name );
                     $job->add_process for 1 .. $start;
                 }
             }
+
             elsif ( $job->count_processes && $job->count_processes > $job->min_processes && $row->{queue} == 0 ) {
-                my $stop = $job->count_processes - $job->min_processes;
-                $self->log->debug( sprintf "Stopping %d process(es) of type %s", $stop, $row->{name} );
-                $job->remove_process for 1 .. $stop;
+                my $idle = time - $job->get_lastrun;
+                if ( $idle >= $self->max_idle_time ) {
+                    my $stop = $job->count_processes - $job->min_processes;
+                    $self->log->debug( sprintf "Stopping %d process(es) of type %s (idle: %d)",
+                        $stop, $job->name, $idle );
+                    $job->remove_process for 1 .. $stop;
+                }
             }
         }
         else {
@@ -948,6 +792,23 @@ no Moose;
 
 __PACKAGE__->meta->make_immutable;
 
+=head1 SCRIPT
+
+There's also a script C<gearman_driver.pl> which is installed with
+this distribution. It just instantiates L<Gearman::Driver> with its
+default values, having most of the options exposed to the command
+line using L<MooseX::Getopt>.
+
+    usage: gearman_driver.pl [long options...]
+            --loglevel          Log level (default: INFO)
+            --lib               Example: --lib ./lib --lib /custom/lib
+            --server            Gearman host[:port][,host[:port]]
+            --logfile           Path to logfile (default: gearman_driver.log)
+            --console_port      Port of management console (default: 47300)
+            --interval          Interval in seconds (see Gearman::Driver::Observer)
+            --loglayout         Log message layout (default: [%d] %p %m%n)
+            --namespaces        Example: --namespaces My::Workers --namespaces My::OtherWorkers
+
 =head1 AUTHOR
 
 Johannes Plunien E<lt>plu@cpan.orgE<gt>
@@ -972,6 +833,8 @@ it under the same terms as Perl itself.
 =item * L<Gearman::Driver::Console::Basic>
 
 =item * L<Gearman::Driver::Job>
+
+=item * L<Gearman::Driver::Loader>
 
 =item * L<Gearman::Driver::Observer>
 

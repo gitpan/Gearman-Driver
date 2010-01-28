@@ -1,5 +1,13 @@
 Revision history for Gearman-Driver
 
+0.01015     Thu Jan 28 2010
+            - New console commands: show, kill, killall,
+              set_processes
+            - Tidied status output of Gearman::Driver::Console
+            - Method get_jobs is sorted now
+            - New option: max_idle_time
+            - Refactored worker loading: Gearman::Worker::Loader
+
 0.01014     Mon Jan 25 2010
             - Refactor console for being more extensible
 

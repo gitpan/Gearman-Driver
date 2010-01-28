@@ -118,54 +118,7 @@ DESCRIPTION
     See also: prefix
 
 ATTRIBUTES
-  namespaces
-    Will be passed to Module::Find "findallmod" method to load worker
-    modules. Each one of those modules has to be inherited from
-    Gearman::Driver::Worker or a subclass of it. It's also possible to use
-    the full package name to load a single module/file. There is also a
-    method get_namespaces which returns a sorted list of all namespaces.
-
-    See also: "wanted".
-
-    * isa: "ArrayRef"
-    * required: "True"
-
-  wanted
-    * isa: "CodeRef"
-    * required: "False"
-
-    This CodeRef will be called on each of the modules found in your
-    "namespace". The first and only parameter to this sub is the name of the
-    module. If a true value is returned, the module will be loaded and
-    checked if it's a valid Gearman::Driver::Worker subclass.
-
-    Let's say you have a namespace called "My::Project":
-
-    * My::Project::Web
-    * My::Project::Web::Controller::Root
-    * My::Project::Web::Controller::Admin
-    * My::Project::Web::Controller::User
-    * My::Project::Web::Model::DBIC
-    * My::Project::Worker::ScaleImage
-    * My::Project::Worker::RemoveUser
-
-    To avoid every module being loaded and inspected being a
-    Gearman::Driver::Worker subclass you can use "wanted" to only load
-    classes having "Worker" in the package name:
-
-        my $driver = Gearman::Driver->new(
-            interval   => 0,
-            namespaces => [qw(My::Project)],
-            wanted     => sub {
-                return 1 if /Worker/;
-                return 0;
-            },
-        );
-
-    This would only load:
-
-    * My::Project::Worker::ScaleImage
-    * My::Project::Worker::RemoveUser
+    See also "ATTRIBUTES" in Gearman::Driver::Loader.
 
   server
     A list of Gearman servers the workers should connect to. The format for
@@ -196,6 +149,21 @@ ATTRIBUTES
     * default: 5
     * isa: "Int"
 
+  max_idle_time
+    Whenever Gearman::Driver::Observer notices that there are more processes
+    running than actually necessary (depending on min_processes and
+    max_processes setting) it will kill them. By default this happens
+    immediately. If you change this value to 300, a process which is not
+    necessary is killed after 300 seconds.
+
+    Please remember that this also depends on what value you set "interval"
+    to. The max_idle_time is only checked each n seconds where n is
+    "interval". Besides that it makes only sense when you have workers where
+    "MinProcesses" in Gearman::Driver::Worker is set to 0.
+
+    * default: 0
+    * isa: "Int"
+
   logfile
     Path to logfile.
 
@@ -213,14 +181,6 @@ ATTRIBUTES
 
     * isa: "Str"
     * default: "INFO"
-
-  lib
-    This is just for convenience to extend @INC from command line using
-    "gearman_driver.pl":
-
-        gearman_driver.pl --lib ./lib --lib /custom/lib --namespaces My::Workers
-
-    * isa: "Str"
 
   unknown_job_callback
     Whenever Gearman::Driver::Observer sees a job that isnt handled it will
@@ -249,13 +209,6 @@ ATTRIBUTES
 
 INTERNAL ATTRIBUTES
     This might be interesting for subclassing Gearman::Driver.
-
-  modules
-    Every worker module loaded by Module::Find will be added to this list.
-    There are also two methods: get_modules and has_modules.
-
-    * isa: "ArrayRef"
-    * readonly: "True"
 
   jobs
     Stores all Gearman::Driver::Job instances. The key is the name the job
@@ -369,20 +322,14 @@ METHODS
 
         $driver->run;
 
+  get_jobs
+    Returns all Gearman::Driver::Job objects ordered by jobname.
+
   run
     This must be called after the Gearman::Driver object is instantiated.
 
   shutdown
     Sends TERM signal to all child processes and exits Gearman::Driver.
-
-  get_namespaces
-    Returns a sorted list of namespaces.
-
-  get_modules
-    Returns a sorted list of modules.
-
-  has_modules
-    Returns the count of modules.
 
   has_job
     Params: $name
@@ -393,6 +340,22 @@ METHODS
     Params: $name
 
     Returns the job instance.
+
+SCRIPT
+    There's also a script "gearman_driver.pl" which is installed with this
+    distribution. It just instantiates Gearman::Driver with its default
+    values, having most of the options exposed to the command line using
+    MooseX::Getopt.
+
+        usage: gearman_driver.pl [long options...]
+                --loglevel          Log level (default: INFO)
+                --lib               Example: --lib ./lib --lib /custom/lib
+                --server            Gearman host[:port][,host[:port]]
+                --logfile           Path to logfile (default: gearman_driver.log)
+                --console_port      Port of management console (default: 47300)
+                --interval          Interval in seconds (see Gearman::Driver::Observer)
+                --loglayout         Log message layout (default: [%d] %p %m%n)
+                --namespaces        Example: --namespaces My::Workers --namespaces My::OtherWorkers
 
 AUTHOR
     Johannes Plunien <plu@cpan.org>
@@ -410,6 +373,7 @@ SEE ALSO
     * Gearman::Driver::Console
     * Gearman::Driver::Console::Basic
     * Gearman::Driver::Job
+    * Gearman::Driver::Loader
     * Gearman::Driver::Observer
     * Gearman::Driver::Worker
     * Gearman::XS

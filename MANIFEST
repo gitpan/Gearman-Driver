@@ -19,6 +19,7 @@ lib/Gearman/Driver.pm
 lib/Gearman/Driver/Console.pm
 lib/Gearman/Driver/Console/Basic.pm
 lib/Gearman/Driver/Job.pm
+lib/Gearman/Driver/Loader.pm
 lib/Gearman/Driver/Observer.pm
 lib/Gearman/Driver/Worker.pm
 lib/Gearman/Driver/Worker/AttributeParser.pm
@@ -31,7 +32,7 @@ script/gearman_driver.pl
 t/00-use.t
 t/01-validate.t
 t/02-live.t
-t/03-namespaces.t
+t/03-loader.t
 t/04-console.t
 t/gearman_driver.pl
 t/gearmand.pl
@@ -53,6 +54,7 @@ t/lib/Live/NS2/Ping2.pm
 t/lib/Live/NS2/UseBase.pm
 t/lib/Live/NS3/AddJob.pm
 t/lib/Live/NS3/AddJobChilds.pm
+t/lib/Loader/Empty.pm
 t/lib/TestLib.pm
 t/lib/Validate/Invalid/NS1/Something.pm
 t/lib/Validate/Invalid/NS2/Something1.pm
