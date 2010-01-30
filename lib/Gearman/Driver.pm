@@ -12,7 +12,7 @@ use MooseX::Types::Path::Class;
 use POE;
 with qw(MooseX::Log::Log4perl MooseX::Getopt Gearman::Driver::Loader);
 
-our $VERSION = '0.01016';
+our $VERSION = '0.01017';
 
 =head1 NAME
 
@@ -341,7 +341,7 @@ C<$status> might look like:
     $VAR1 = {
         'busy'    => 0,
         'free'    => 0,
-        'name'    => 'GDExamples::Sleeper::unknown_job',
+        'name'    => 'GDExamples::Convert::unknown_job',
         'queue'   => 6,
         'running' => 0
     };

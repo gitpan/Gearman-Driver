@@ -1,8 +1,8 @@
 Changes
-examples/client.pl
-examples/driver.pl
-examples/lib/GDExamples/Sleeper.pm
-examples/lib/GDExamples/WWW.pm
+examples/convert.pl
+examples/cpan.png
+examples/GDExamples/Convert.pm
+examples/README
 inc/Module/AutoInstall.pm
 inc/Module/Install.pm
 inc/Module/Install/AutoInstall.pm
