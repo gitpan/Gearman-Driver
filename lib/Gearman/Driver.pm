@@ -12,7 +12,7 @@ use MooseX::Types::Path::Class;
 use POE;
 with qw(MooseX::Log::Log4perl MooseX::Getopt Gearman::Driver::Loader);
 
-our $VERSION = '0.01015';
+our $VERSION = '0.01016';
 
 =head1 NAME
 
@@ -616,6 +616,11 @@ sub shutdown {
     POE::Kernel->signal( $self->{session}, 'TERM' );
 }
 
+sub DEMOLISH {
+    my ($self) = @_;
+    $self->shutdown;
+}
+
 =head2 has_job
 
 Params: $name
@@ -831,6 +836,8 @@ it under the same terms as Perl itself.
 =item * L<Gearman::Driver::Console>
 
 =item * L<Gearman::Driver::Console::Basic>
+
+=item * L<Gearman::Driver::Console::Client>
 
 =item * L<Gearman::Driver::Job>
 

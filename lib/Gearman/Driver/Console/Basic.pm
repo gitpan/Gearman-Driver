@@ -2,6 +2,7 @@ package Gearman::Driver::Console::Basic;
 
 use Moose::Role;
 use DateTime;
+use Time::HiRes;
 
 =head1 NAME
 
@@ -18,9 +19,11 @@ C<quit>, C<shutdown>, ...
 
 Parameters: C<none>
 
-    GDExamples::Sleeper::ZzZzZzzz               3  6  3
-    GDExamples::Sleeper::long_running_ZzZzZzzz  1  2  1
-    GDExamples::WWW::is_online                  0  1  0
+    status
+    GDExamples::Sleeper::ZzZzZzzz               3  6  6  2010-01-29T20:37:17  1970-01-01T00:00:00
+    GDExamples::Sleeper::error                  1  1  1  2010-01-29T20:37:12  2010-01-29T20:37:12   some test at /Users/plu/Development/OpenSource/Gearman-Driver/examples/lib/GDExamples/Sleeper.pm line 30.
+    GDExamples::Sleeper::long_running_ZzZzZzzz  1  2  1  1970-01-01T00:00:00  1970-01-01T00:00:00
+    GDExamples::WWW::is_online                  0  1  1  2010-01-29T20:37:12  1970-01-01T00:00:00
     .
 
 Columns are separated by at least two spaces in this order:
@@ -34,6 +37,12 @@ Columns are separated by at least two spaces in this order:
 =item * max_processes
 
 =item * current_processes
+
+=item * last_run
+
+=item * last_error
+
+=item * last_error_message
 
 =back
 
@@ -188,13 +197,13 @@ sub set_processes {
 Parameters: C<job_name>
 
     show GDExamples::Sleeper::ZzZzZzzz
-    GDExamples::Sleeper::ZzZzZzzz   3       6       3
+    GDExamples::Sleeper::ZzZzZzzz  3  6  3  1970-01-01T00:00:00  1970-01-01T00:00:00
     3662
     3664
     3663
     .
     show GDExamples::Sleeper::long_running_ZzZzZzzz
-    GDExamples::Sleeper::long_running_ZzZzZzzz      1       2       1
+    GDExamples::Sleeper::long_running_ZzZzZzzz  1  2  1  1970-01-01T00:00:00  1970-01-01T00:00:00
     3665
     .
 
@@ -207,8 +216,16 @@ sub show {
 
     my @result = ();
 
+    my $error = $job->get_lasterror_msg;
+    chomp $error;
+
     push @result,
-      sprintf( "%s  %d  %d  %d", $job->name, $job->min_processes, $job->max_processes, $job->count_processes );
+      sprintf(
+        "%s  %d  %d  %d  %s  %s  %s",
+        $job->name, $job->min_processes, $job->max_processes, $job->count_processes,
+        DateTime->from_epoch( epoch => $job->get_lastrun ),
+        DateTime->from_epoch( epoch => $job->get_lasterror ), $error
+      );
 
     push @result, $job->get_pids;
 
@@ -251,21 +268,41 @@ sub kill {
 
 Kills all childs/pids of given job.
 
-Parameters: C<job_name>
+Parameters: C<job_name> [<job_name> <job_name> ...]
 
     killall GDExamples::Sleeper::ZzZzZzzz
     OK
     .
 
+It also accepts C<*> as parameter to kill all jobs, so be careful
+with that!
+
 =cut
 
 sub killall {
-    my ( $self, $job_name ) = @_;
+    my ( $self, @job_names ) = @_;
 
-    my $job  = $self->get_job($job_name);
-    my @pids = $job->get_pids;
+    die "ERR invalid_value: no job_names given\n" unless scalar(@job_names);
 
-    CORE::kill 15, @pids;
+    my $kill = sub {
+        my ($job) = @_;
+        my @pids = $job->get_pids;
+        CORE::kill 15, @pids;
+        Time::HiRes::usleep(50);    # prevent POE from freaking out
+    };
+
+    if ( defined $job_names[0] && $job_names[0] eq '*' && scalar(@job_names) == 1 ) {
+        foreach my $job ( $self->driver->get_jobs ) {
+            $kill->($job);
+        }
+    }
+
+    else {
+        foreach my $job_name (@job_names) {
+            my $job = $self->get_job($job_name);
+            $kill->($job);
+        }
+    }
 
     return "OK";
 }
@@ -304,6 +341,8 @@ See L<Gearman::Driver>.
 =item * L<Gearman::Driver>
 
 =item * L<Gearman::Driver::Console>
+
+=item * L<Gearman::Driver::Console::Client>
 
 =item * L<Gearman::Driver::Job>
 

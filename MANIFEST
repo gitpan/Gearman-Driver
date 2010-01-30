@@ -18,6 +18,7 @@ inc/Module/Install/WriteAll.pm
 lib/Gearman/Driver.pm
 lib/Gearman/Driver/Console.pm
 lib/Gearman/Driver/Console/Basic.pm
+lib/Gearman/Driver/Console/Client.pm
 lib/Gearman/Driver/Job.pm
 lib/Gearman/Driver/Loader.pm
 lib/Gearman/Driver/Observer.pm
@@ -29,11 +30,11 @@ MANIFEST			This list of files
 META.yml
 README
 script/gearman_driver.pl
+script/gearman_driver_console.pl
 t/00-use.t
-t/01-validate.t
+t/01-loader.t
 t/02-live.t
-t/03-loader.t
-t/04-console.t
+t/03-console.t
 t/gearman_driver.pl
 t/gearmand.pl
 t/lib/Base/TestWorker.pm
