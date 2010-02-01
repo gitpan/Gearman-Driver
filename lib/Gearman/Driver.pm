@@ -12,7 +12,7 @@ use MooseX::Types::Path::Class;
 use POE;
 with qw(MooseX::Log::Log4perl MooseX::Getopt Gearman::Driver::Loader);
 
-our $VERSION = '0.01018';
+our $VERSION = '0.01019';
 
 =head1 NAME
 
@@ -436,6 +436,29 @@ has 'console' => (
     is     => 'ro',
     isa    => 'Gearman::Driver::Console',
     traits => [qw(NoGetopt)],
+);
+
+=head2 extended_status
+
+Enables/disables extended status information in
+L<management console|Gearman::Driver::Console::Basic/status> like
+lastrun, lasterror and lasterror_msg.
+
+=over 4
+
+=item * isa: C<Bool>
+
+=item * default: C<1>
+
+=back
+
+=cut
+
+has 'extended_status' => (
+    default       => 1,
+    documentation => 'Show extended status infos in management console',
+    is            => 'rw',
+    isa           => 'Bool',
 );
 
 has 'session' => (
