@@ -4,12 +4,22 @@ package    # hide from PAUSE
 use base qw(Gearman::Driver::Worker);
 use Moose;
 
+has 'ten_processes_done' => (
+    default => 0,
+    is      => 'rw',
+    isa     => 'Bool',
+);
+
 sub ping : Job {
     return 'pong';
 }
 
 sub ten_processes : Job : MinChilds(10) : MaxChilds(10) {
     my ( $self, $job, $workload ) = @_;
+    if ( $self->ten_processes_done ) {
+        exit(1);
+    }
+    $self->ten_processes_done(1);
     return $self->pid;
 }
 

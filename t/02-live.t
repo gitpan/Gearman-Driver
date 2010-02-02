@@ -8,12 +8,12 @@ use File::Slurp;
 use File::Temp qw(tempfile);
 
 my $test = TestLib->new();
-my $gc   = $test->gearman_client;
 
 $test->run_gearmand;
 $test->run_gearman_driver;
 
 my $telnet = $test->telnet_client;
+my $gc     = $test->gearman_client;
 
 # give gearmand + driver at least 5 seconds to settle
 foreach my $namespace (qw(Live::NS1::Basic Live::NS1::BasicChilds)) {
@@ -36,16 +36,17 @@ foreach my $namespace (qw(Live::NS1::Basic Live::NS1::BasicChilds)) {
 }
 
 # i hope this assumption is always true:
-# out of 10000 jobs all 10 processes handled at least one job
+# out of 50000 jobs all 10 processes handled at least one job
 {
     foreach my $namespace (qw(Live::NS1::Basic Live::NS1::BasicChilds)) {
         my %pids = ();
-        for ( 1 .. 10000 ) {
+        for ( 1 .. 50000 ) {
             my ( $ret, $pid ) = $gc->do( "${namespace}::ten_processes" => '' );
+            next unless $pid;
             $pids{$pid}++;
             last if scalar( keys(%pids) ) == 10;
         }
-        is( scalar( keys(%pids) ), 10, "10 different processes handled job 'ten_processes'" );
+        is( scalar( keys(%pids) ), 10, "10 different processes handled job '${namespace}::ten_processes'" );
     }
 }
 
@@ -54,8 +55,9 @@ foreach my $namespace (qw(Live::NS1::Basic Live::NS1::BasicChilds)) {
     $telnet->print('set_min_processes Live::NS1::Basic::ten_processes 5');
     $telnet->print('set_max_processes Live::NS1::Basic::ten_processes 5');
     my %pids = ();
-    for ( 1 .. 10000 ) {
+    for ( 1 .. 50000 ) {
         my ( $ret, $pid ) = $gc->do( 'Live::NS1::Basic::ten_processes' => '' );
+        next unless $pid;
         $pids{$pid}++;
         last if scalar( keys(%pids) ) == 5;
     }
@@ -210,15 +212,16 @@ foreach my $namespace (qw(Live::NS3::AddJob Live::NS3::AddJobChilds)) {
     }
 
     # i hope this assumption is always true:
-    # out of 10000 jobs all 10 processes handled at least one job
+    # out of 50000 jobs all 10 processes handled at least one job
     {
         my %pids = ();
-        for ( 1 .. 10000 ) {
+        for ( 1 .. 50000 ) {
             my ( $ret, $pid ) = $gc->do( "${namespace}::ten_processes" => 'xxx' );
+            next unless $pid;
             $pids{$pid}++;
             last if scalar( keys(%pids) ) == 10;
         }
-        is( scalar( keys(%pids) ), 10, "10 different processes handled job '{namespace}::ten_processes'" );
+        is( scalar( keys(%pids) ), 10, "10 different processes handled job '${namespace}::ten_processes'" );
     }
 
     {

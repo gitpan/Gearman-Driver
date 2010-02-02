@@ -12,7 +12,7 @@ use MooseX::Types::Path::Class;
 use POE;
 with qw(MooseX::Log::Log4perl MooseX::Getopt Gearman::Driver::Loader);
 
-our $VERSION = '0.01019';
+our $VERSION = '0.01020';
 
 =head1 NAME
 
@@ -489,7 +489,7 @@ Name of a encoder method in your worker object.
 
 =item * method (mandatory)
 
-Reference to a L<Class::MOP::Method> object which will get invoked.
+Reference to a CodeRef which will get invoked.
 
 =item * min_processes (mandatory)
 
@@ -856,6 +856,8 @@ it under the same terms as Perl itself.
 
 =over 4
 
+=item * L<Gearman::Driver::Adaptor>
+
 =item * L<Gearman::Driver::Console>
 
 =item * L<Gearman::Driver::Console::Basic>
@@ -871,6 +873,10 @@ it under the same terms as Perl itself.
 =item * L<Gearman::Driver::Worker>
 
 =item * L<Gearman::XS>
+
+=item * L<Gearman>
+
+=item * L<Gearman::Server>
 
 =item * L<Log::Log4perl>
 

@@ -6,7 +6,7 @@ all_from 'lib/Gearman/Driver.pm';
 requires(
     'Cache::FastMmap'            => '1.34',
     'DateTime'                   => '0.4304',
-    'Gearman::XS'                => '0.7',
+    'Gearman::Client'            => '1.11',
     'Module::Find'               => '0.08',
     'Moose'                      => '0.90',
     'MooseX::Getopt'             => '0.24',
@@ -15,17 +15,23 @@ requires(
     'MooseX::Types::Path::Class' => '0.05',
     'Net::Telnet::Gearman'       => '0.01000',
     'POE'                        => '1.280',
+    'Time::HiRes'                => '1.9715',
     'Try::Tiny'                  => '0.02',
 );
 
 test_requires(
     'File::Slurp'       => 0,
     'File::Temp'        => 0,
+    'Gearman::Server'   => '1.11',
     'Net::Telnet'       => 0,
     'Test::Differences' => 0,
     'Test::Exception'   => 0,
     'Test::More'        => 0,
 );
+
+feature 'Gearman::XS',
+  -default      => 0,
+  'Gearman::XS' => '0.7';
 
 my @tests = ('t/*.t');
 

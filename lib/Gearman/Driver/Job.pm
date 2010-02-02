@@ -1,8 +1,7 @@
 package Gearman::Driver::Job;
 
 use Moose;
-use Gearman::XS::Worker;
-use Gearman::XS qw(:constants);
+use Gearman::Driver::Adaptor;
 use POE qw(Wheel::Run);
 use Try::Tiny;
 use Cache::FastMmap;
@@ -83,21 +82,6 @@ Reference to the worker object.
 has 'worker' => (
     is       => 'rw',
     isa      => 'Any',
-    required => 1,
-);
-
-=head2 server
-
-A list of Gearman servers the workers should connect to. The format
-for the server list is: C<host[:port][,host[:port]]>
-
-It's the same value as in L<Gearman::Driver/server>.
-
-=cut
-
-has 'server' => (
-    is       => 'rw',
-    isa      => 'Str',
     required => 1,
 );
 
@@ -206,13 +190,13 @@ has 'processes' => (
 
 =head2 gearman
 
-Instance of L<Gearman::XS::Worker>.
+Instance of L<Gearman::Driver::Adaptor>.
 
 =cut
 
 has 'gearman' => (
     is  => 'ro',
-    isa => 'Gearman::XS::Worker',
+    isa => 'Gearman::Driver::Adaptor',
 );
 
 =head2 session
@@ -239,7 +223,7 @@ has 'cache' => (
     default => sub {
         Cache::FastMmap->new(
             share_file  => '/tmp/gearman_driver.cache',
-            expire_time => 604800,
+            expire_time => 0,
         );
     },
     is   => 'ro',
@@ -260,7 +244,9 @@ has 'lastrun' => (
     is      => 'rw',
     isa     => 'Int',
     trigger => sub {
-        my ( $self, $value ) = @_;
+        my ( $self, $value, $old_value ) = @_;
+        $old_value ||= 0;
+        return if $value == $old_value;
         my $key = sprintf '%s_lastrun', $self->name;
         $self->cache->set( $key => $value );
     }
@@ -279,7 +265,9 @@ has 'lasterror' => (
     is      => 'rw',
     isa     => 'Int',
     trigger => sub {
-        my ( $self, $value ) = @_;
+        my ( $self, $value, $old_value ) = @_;
+        $old_value ||= 0;
+        return if $value == $old_value;
         my $key = sprintf '%s_lasterror', $self->name;
         $self->cache->set( $key => $value );
     }
@@ -298,7 +286,9 @@ has 'lasterror_msg' => (
     is      => 'rw',
     isa     => 'Str',
     trigger => sub {
-        my ( $self, $value ) = @_;
+        my ( $self, $value, $old_value ) = @_;
+        $old_value ||= '';
+        return if $value eq $old_value;
         my $key = sprintf '%s_lasterror_msg', $self->name;
         $self->cache->set( $key => $value );
     }
@@ -367,8 +357,7 @@ sub remove_process {
 sub BUILD {
     my ($self) = @_;
 
-    $self->{gearman} = Gearman::XS::Worker->new;
-    $self->gearman->add_servers( $self->server );
+    $self->{gearman} = Gearman::Driver::Adaptor->new( server => $self->driver->server );
 
     my $wrapper = sub {
         my ($job) = @_;
@@ -376,7 +365,7 @@ sub BUILD {
         my @args = ($job);
 
         if ( my $decoder = $self->decode ) {
-            push @args, $self->worker->$decoder( $job->workload );
+            push @args, $self->worker->$decoder($job->workload);
         }
         else {
             push @args, $job->workload;
@@ -408,10 +397,7 @@ sub BUILD {
         return $result;
     };
 
-    my $ret = $self->gearman->add_function( $self->name, 0, $wrapper, '' );
-    if ( $ret != GEARMAN_SUCCESS ) {
-        die $self->gearman->error;
-    }
+    $self->gearman->add_function( $self->name => $wrapper );
 
     $self->{session} = POE::Session->create(
         object_states => [
@@ -436,17 +422,13 @@ sub _add_process {
     my ( $self, $kernel, $heap ) = @_[ OBJECT, KERNEL, HEAP ];
     my $process = POE::Wheel::Run->new(
         Program => sub {
+            POE::Kernel->stop();
+
             if ( my $process_name = $self->worker->process_name( $0, $self->name ) ) {
                 $0 = $process_name;
             }
 
-            while (1) {
-                my $ret = $self->gearman->work;
-                if ( $ret != GEARMAN_SUCCESS ) {
-                    $self->log->error( sprintf '[%s] Gearman error: %s', $self->name, $self->gearman->error );
-                    exit(1);
-                }
-            }
+            $self->gearman->work;
         },
         StdoutEvent => "got_process_stdout",
         StderrEvent => "got_process_stderr",
@@ -523,6 +505,8 @@ See L<Gearman::Driver>.
 =over 4
 
 =item * L<Gearman::Driver>
+
+=item * L<Gearman::Driver::Adaptor>
 
 =item * L<Gearman::Driver::Console>
 

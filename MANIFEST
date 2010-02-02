@@ -16,6 +16,9 @@ inc/Module/Install/Scripts.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
 lib/Gearman/Driver.pm
+lib/Gearman/Driver/Adaptor.pm
+lib/Gearman/Driver/Adaptor/PP.pm
+lib/Gearman/Driver/Adaptor/XS.pm
 lib/Gearman/Driver/Console.pm
 lib/Gearman/Driver/Console/Basic.pm
 lib/Gearman/Driver/Console/Client.pm
