@@ -1,5 +1,11 @@
 Revision history for Gearman-Driver
 
+0.02001     Wed Mar 24 2010
+            - Log error if observer gets disconnected from gearmand
+              and auto-reconnect it
+            - Do not hide class loading errors
+            - Refactor testsuite to be less resource intensive
+
 0.02000     Thu Feb 18 2010
             - Remove smoker debugging
 

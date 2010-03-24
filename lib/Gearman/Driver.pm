@@ -2,7 +2,6 @@ package Gearman::Driver;
 
 use Moose;
 use Moose::Util qw(apply_all_roles);
-use Class::MOP;
 use Carp qw(croak);
 use Gearman::Driver::Observer;
 use Gearman::Driver::Console;
@@ -13,7 +12,7 @@ use MooseX::Types::Path::Class;
 use POE;
 with qw(MooseX::Log::Log4perl MooseX::Getopt Gearman::Driver::Loader);
 
-our $VERSION = '0.02000';
+our $VERSION = '0.02001';
 
 =head1 NAME
 
@@ -726,8 +725,8 @@ sub _start_observer {
     if ( $self->interval > 0 ) {
         $self->{observer} = Gearman::Driver::Observer->new(
             callback => sub {
-                my ($status) = @_;
-                $self->_observer_callback($status);
+                my ($response) = @_;
+                $self->_observer_callback($response);
             },
             interval => $self->interval,
             server   => $self->server,
@@ -746,7 +745,9 @@ sub _start_console {
 }
 
 sub _observer_callback {
-    my ( $self, $status ) = @_;
+    my ( $self, $response ) = @_;
+
+    my $status = $response->{data};
     foreach my $row (@$status) {
         if ( my $job = $self->_find_job( $row->{name} ) ) {
             if ( $job->count_processes <= $row->{busy} && $row->{queue} ) {
@@ -772,6 +773,11 @@ sub _observer_callback {
         else {
             $self->unknown_job_callback->( $self, $row ) if $row->{queue} > 0;
         }
+    }
+
+    my $error = $response->{error};
+    foreach my $e (@$error) {
+        $self->log->error( sprintf "Gearman::Driver::Observer: %s", $e );
     }
 }
 
