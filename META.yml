@@ -14,7 +14,7 @@ build_requires:
 configure_requires:
   ExtUtils::MakeMaker: 6.42
 distribution_type: module
-generated_by: 'Module::Install version 0.95'
+generated_by: 'Module::Install version 0.92'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -34,6 +34,7 @@ requires:
   MooseX::Getopt: 0.24
   MooseX::Log::Log4perl: 0.40
   MooseX::MethodAttributes: 0.18
+  MooseX::SimpleConfig: 0.05
   MooseX::Types::Path::Class: 0.05
   Net::Telnet::Gearman: 0.01000
   POE: 1.280
@@ -42,4 +43,4 @@ requires:
   Try::Tiny: 0.02
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.02003
+version: 0.02004

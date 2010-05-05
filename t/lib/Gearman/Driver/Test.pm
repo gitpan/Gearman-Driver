@@ -59,14 +59,12 @@ sub stop_gearmand {
 
 sub run_gearman_driver {
     my ( $self, @args ) = @_;
-
+    
     unless ( $self->{gearman_driver_pid} = fork ) {
         die "cannot fork: $!" unless defined $self->{gearman_driver_pid};
-
-        my @cmd = ( $^X, "$Bin/gearman_driver.pl", @args );
-
-        exec @cmd or die "Could not exec $Bin/gearman_driver.pl";
-
+        @args = map { $_ =~/^--/ ? split /\s+/ ,$_,2: ('--namespaces',$_) } @args;
+        my @cmd = ($^X, "$Bin/gearman_driver.pl", @args);
+        exec (@cmd ) or die "Could not exec $Bin/gearman_driver.pl";
         exit(0);
     }
 
@@ -112,11 +110,10 @@ sub gearman_client {
 }
 
 sub gearman_driver {
-    return Gearman::Driver->new(
+    return Gearman::Driver->new_with_options(
         max_idle_time => 5,
         interval      => 1,
         loglevel      => 'DEBUG',
-        namespaces    => \@ARGV,
         server        => join( ':', $host, $port ),
     );
 }
