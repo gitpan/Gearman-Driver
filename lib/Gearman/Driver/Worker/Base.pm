@@ -27,6 +27,8 @@ sub begin { }
 
 sub end { }
 
+sub on_exception { }
+
 sub process_name {
     return 0;
 }

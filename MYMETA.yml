@@ -13,10 +13,9 @@ build_requires:
   Test::More: 0
   YAML: 0
 configure_requires:
-  ExtUtils::MakeMaker: 6.36
-distribution_type: module
-dynamic_config: 1
-generated_by: 'Module::Install version 1.04'
+  ExtUtils::MakeMaker: 0
+dynamic_config: 0
+generated_by: 'ExtUtils::MakeMaker version 6.62, CPAN::Meta::Converter version 2.113640'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -24,10 +23,8 @@ meta-spec:
 name: Gearman-Driver
 no_index:
   directory:
-    - examples
-    - inc
     - t
-    - xt
+    - inc
 requires:
   DateTime: 0.4304
   Gearman::Client: 1.10
@@ -44,6 +41,4 @@ requires:
   Term::ReadKey: 2.30
   Time::HiRes: 1.9715
   Try::Tiny: 0.02
-resources:
-  license: http://dev.perl.org/licenses/
 version: 0.02006

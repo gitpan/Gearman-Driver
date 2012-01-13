@@ -32,6 +32,8 @@ lib/Gearman/Driver/Worker/Base.pm
 Makefile.PL
 MANIFEST			This list of files
 META.yml
+MYMETA.json
+MYMETA.yml
 README
 script/gearman_driver.pl
 script/gearman_driver_console.pl
@@ -51,6 +53,7 @@ t/029-live-prefix.t
 t/030-live-spread.t
 t/040-live-console.t
 t/041-live-runtime.t
+t/042-live-shutdown.t
 t/gearman_driver.pl
 t/gearman_driver.yml
 t/gearmand.pl
@@ -68,6 +71,7 @@ t/lib/Gearman/Driver/Test/Live/Prefix.pm
 t/lib/Gearman/Driver/Test/Live/ProcessGroup.pm
 t/lib/Gearman/Driver/Test/Live/Quit.pm
 t/lib/Gearman/Driver/Test/Live/RuntimeOption.pm
+t/lib/Gearman/Driver/Test/Live/Shutdown.pm
 t/lib/Gearman/Driver/Test/Live/Spread.pm
 t/lib/Gearman/Driver/Test/Live/WithBaseClass.pm
 t/lib/Gearman/Driver/Test/Loader/Empty.pm

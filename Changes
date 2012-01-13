@@ -1,5 +1,12 @@
 Revision history for Gearman-Driver
 
+TBD. to make shipit work properly
+            - Finish job before killing the processes
+            - Add --daemonize , let gearman-driver run as daemon
+            - Gearman::XS worker run in non-blocking I/O mode, reduce CPU resource a bit.
+            - Don't use Gearman::XS 0.9, this will break compatibility with PHP client.
+            - Implement GLOBAL keyword for attribute 'worker_options'
+
 0.02005     Mon May 10 2010
             - Add missing YAML dependency required for running the
               testsuite

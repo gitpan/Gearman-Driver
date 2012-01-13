@@ -24,9 +24,23 @@ sub add_function {
 
 sub work {
     my ($self) = @_;
-    while (1) {
+
+    # Make sure that the current job is processed until the end before shutting
+    # down.
+    my $must_stop;
+    local $SIG{TERM} = sub {
+        $must_stop = 1;
+    };
+
+    $self->worker->add_options(GEARMAN_WORKER_NON_BLOCKING);
+
+    while (!$must_stop) {
         my $ret = $self->worker->work;
-        if ( $ret != GEARMAN_SUCCESS ) {
+        if (!$must_stop && ($ret == GEARMAN_IO_WAIT || $ret == GEARMAN_NO_JOBS )) {
+            local $SIG{TERM} = 'DEFAULT';
+            $self->worker->wait;
+        }
+        elsif ($ret != GEARMAN_SUCCESS ) {
             die $self->worker->error;
         }
     }

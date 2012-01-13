@@ -12,7 +12,7 @@ use MooseX::Types::Path::Class;
 use POE;
 with qw(MooseX::Log::Log4perl MooseX::SimpleConfig MooseX::Getopt Gearman::Driver::Loader);
 
-our $VERSION = '0.02005';
+our $VERSION = '0.02006';
 
 =head1 NAME
 
@@ -364,20 +364,30 @@ has 'unknown_job_callback' => (
 
 =head2 worker_options
 
-You can pass runtime options to the worker module, these will pass to the worker constructor.
+You can pass runtime options to the worker module, these will merged with 'GLOBAL' and pass to the worker constructor. ( worker options override globals )
+
+=over 4
+
+=item * default: C<{}>
+
+=item * isa: C<HashRef>
+
+=back
 
 Example:
 
-    has worker_options => (
-        default => sub {
-            {
-                'My::App::Worker::MysqlPing'  => {
+    my $driver = Gearman::Driver->new(
+        namespaces     => [qw(My::Workers)],
+        worker_options => {
+            'GLOBAL' => {
+                'config' => $config,
+            },
+            'My::Workers::MysqlPing' => {
                 'dsn' => 'DBI:mysql:database=test;host=localhost;mysql_auto_reconnect=1;mysql_enable_utf8=1;mysql_server_prepare=1;',
-                },
-                'My::App::Worker::ImageThumbnail' => {
-                    'default_format' => 'jpeg',
-                    'default_size => '133x100',
-                }
+            },
+            'My::Workers::ImageThumbnail' => {
+                'default_format' => 'jpeg',
+                'default_size => ' 133 x 100 ',
             }
         }
     );
@@ -447,6 +457,19 @@ You can pass an array of filenames if you want, like:
 
 has '+configfile' =>  (
     documentation => 'Gearman-driver runtime config path',
+);
+
+=head2 daemonize
+
+Detach self and run as a daemon.
+
+=cut
+
+has 'daemonize' =>  (
+    isa => 'Bool',
+    is  => 'rw',
+    default  => 0,
+    documentation => 'Let Gearman-driver run as a daemon'
 );
 
 =head1 INTERNAL ATTRIBUTES
@@ -756,6 +779,9 @@ sub run {
     my ($self) = @_;
     push @INC, @{ $self->lib };
     $self->load_namespaces;
+
+    $self->_daemonize if $self->daemonize;
+
     $self->_start_observer;
     $self->_start_console;
     $self->_start_session;
@@ -859,7 +885,7 @@ sub _observer_callback {
 
             elsif ( $job->count_processes && $job->count_processes > $job->min_processes && $row->{queue} == 0 ) {
                 my $idle = time - $job->lastrun;
-                if ( $idle >= $self->max_idle_time ) {
+                if ( $job->lastrun && ($idle >= $self->max_idle_time) ) {
                     my $stop = $job->count_processes - $job->min_processes;
                     $self->log->debug( sprintf "Stopping %d process(es) of type %s (idle: %d)",
                         $stop, $job->name, $idle );
@@ -940,9 +966,12 @@ sub _add_jobs {
     my $job_runtime_attributes = $self->job_runtime_attributes;
 
     foreach my $module ( $self->get_modules ) {
-        my $module_options = $worker_options->{$module} || {};
-        $module_options->{server} = $self->server;
-        my $worker = $module->new( $module_options );
+        my %module_options = (
+            %{ $worker_options->{GLOBAL}  || {} },
+            %{ $worker_options->{$module} || {} },
+        );
+        $module_options{server} = $self->server;
+        my $worker = $module->new( %module_options );
         my %methods = ();
         foreach my $method ( $module->meta->get_nearest_methods_with_attributes ) {
             apply_all_roles( $method => 'Gearman::Driver::Worker::AttributeParser' );
@@ -1026,6 +1055,28 @@ sub _monitor_processes {
     $_[KERNEL]->delay( monitor_processes => 5 );
 }
 
+
+sub _daemonize {
+    my $self = shift;
+    my $logfile = $self->logfile || '/dev/null';
+    # fallback to /dev/null
+    $logfile = '/dev/null' unless -w $logfile;
+    require POSIX;
+    fork && exit;
+    ## Detach ourselves from the terminal
+    croak "Cannot detach from controlling terminal" unless POSIX::setsid();
+    fork && exit;
+    umask 0;
+    close(STDIN);
+    close(STDOUT);
+    close(STDERR);
+    ## Reopen stderr, stdout, stdin to $logfile
+    open(STDIN,  "+>$logfile");
+    open(STDOUT, "+>&STDIN");
+    open(STDERR, "+>&STDIN");
+    chdir "/";
+}
+
 no Moose;
 
 __PACKAGE__->meta->make_immutable;
@@ -1047,6 +1098,7 @@ line using L<MooseX::Getopt>.
             --loglayout         Log message layout (default: [%d] %p %m%n)
             --namespaces        Example: --namespaces My::Workers --namespaces My::OtherWorkers
             --configfile        Read options from this file. Example: --configfile ./etc/gearman-driver-config.yml
+            --daemonize         Run as daemon.
 
 =head1 AUTHOR
 
@@ -1057,6 +1109,8 @@ Johannes Plunien E<lt>plu@cpan.orgE<gt>
 Uwe Voelker, <uwe.voelker@gmx.de>
 
 Night Sailer <nightsailer@gmail.com>
+
+Robert Bohne, <rbo@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
@@ -1116,7 +1170,6 @@ it under the same terms as Perl itself.
 =head1 REPOSITORY
 
 L<http://github.com/plu/gearman-driver/>
-L<http://github.com/nightsailer/gearman-driver/>
 
 =cut
 

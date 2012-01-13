@@ -12,7 +12,8 @@ use Danga::Socket;
 use IO::Socket::INET;
 
 BEGIN {
-    $ENV{GEARMAN_DRIVER_ADAPTOR} = 'Gearman::Driver::Adaptor::PP';
+    $ENV{GEARMAN_DRIVER_ADAPTOR} = 'Gearman::Driver::Adaptor::PP'
+        unless $ENV{GEARMAN_DRIVER_ADAPTOR};
 }
 
 my ( $host, $port ) = ( '127.0.0.1', 4731 );
