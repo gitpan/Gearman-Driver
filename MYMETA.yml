@@ -15,7 +15,7 @@ build_requires:
 configure_requires:
   ExtUtils::MakeMaker: 0
 dynamic_config: 0
-generated_by: 'ExtUtils::MakeMaker version 6.62, CPAN::Meta::Converter version 2.113640'
+generated_by: 'ExtUtils::MakeMaker version 6.62, CPAN::Meta::Converter version 2.120921'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -28,7 +28,6 @@ no_index:
 requires:
   DateTime: 0.4304
   Gearman::Client: 1.10
-  Gearman::XS: 0
   Module::Find: 0.08
   Moose: 0.90
   MooseX::Getopt: 0.24
@@ -41,4 +40,4 @@ requires:
   Term::ReadKey: 2.30
   Time::HiRes: 1.9715
   Try::Tiny: 0.02
-version: 0.02006
+version: 0.02007

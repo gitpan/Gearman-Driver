@@ -4,7 +4,7 @@
       "Johannes Plunien <plu@cpan.org>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "ExtUtils::MakeMaker version 6.62, CPAN::Meta::Converter version 2.113640",
+   "generated_by" : "ExtUtils::MakeMaker version 6.62, CPAN::Meta::Converter version 2.120921",
    "license" : [
       "perl_5"
    ],
@@ -23,26 +23,25 @@
       "build" : {
          "requires" : {
             "ExtUtils::MakeMaker" : "6.36",
-            "File::Slurp" : 0,
-            "File::Temp" : 0,
+            "File::Slurp" : "0",
+            "File::Temp" : "0",
             "Gearman::Server" : "1.10",
-            "Net::Telnet" : 0,
-            "Test::Differences" : 0,
-            "Test::Exception" : 0,
-            "Test::More" : 0,
-            "YAML" : 0
+            "Net::Telnet" : "0",
+            "Test::Differences" : "0",
+            "Test::Exception" : "0",
+            "Test::More" : "0",
+            "YAML" : "0"
          }
       },
       "configure" : {
          "requires" : {
-            "ExtUtils::MakeMaker" : 0
+            "ExtUtils::MakeMaker" : "0"
          }
       },
       "runtime" : {
          "requires" : {
             "DateTime" : "0.4304",
             "Gearman::Client" : "1.10",
-            "Gearman::XS" : 0,
             "Module::Find" : "0.08",
             "Moose" : "0.90",
             "MooseX::Getopt" : "0.24",
@@ -59,5 +58,5 @@
       }
    },
    "release_status" : "stable",
-   "version" : "0.02006"
+   "version" : "0.02007"
 }
