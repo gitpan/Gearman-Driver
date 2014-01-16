@@ -1,5 +1,9 @@
 Revision history for Gearman-Driver
 
+0.02008     Thu Jan 16 2014
+            - Do not initialize Log4perl if it was already initialized. (Roman F.)
+            - Use Module::Runtime::use_module instead of Class::MOP::load_class
+
 0.02007     Sun Oct 21 2012
             - Bundle Module::Install 1.06
               See also: http://goo.gl/TXzhQ

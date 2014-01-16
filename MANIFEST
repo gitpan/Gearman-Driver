@@ -33,8 +33,6 @@ lib/Gearman/Driver/Worker/Base.pm
 Makefile.PL
 MANIFEST			This list of files
 META.yml
-MYMETA.json
-MYMETA.yml
 README
 script/gearman_driver.pl
 script/gearman_driver_console.pl

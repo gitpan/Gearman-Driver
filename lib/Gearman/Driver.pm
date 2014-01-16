@@ -12,7 +12,7 @@ use MooseX::Types::Path::Class;
 use POE;
 with qw(MooseX::Log::Log4perl MooseX::SimpleConfig MooseX::Getopt Gearman::Driver::Loader);
 
-our $VERSION = '0.02007';
+our $VERSION = '0.02008';
 
 =head1 NAME
 
@@ -828,13 +828,15 @@ sub BUILD {
 sub _setup_logger {
     my ($self) = @_;
 
-    Log::Log4perl->easy_init(
-        {
-            file   => sprintf( '>>%s', $self->logfile ),
-            layout => $self->loglayout,
-            level  => $self->loglevel,
-        },
-    );
+    unless (Log::Log4perl->initialized()) {
+        Log::Log4perl->easy_init(
+            {
+                file   => sprintf( '>>%s', $self->logfile ),
+                layout => $self->loglayout,
+                level  => $self->loglevel,
+            },
+        );
+    }
 }
 
 sub _start_observer {

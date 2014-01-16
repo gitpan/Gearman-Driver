@@ -1,7 +1,7 @@
 package Gearman::Driver::Loader;
 
 use Moose::Role;
-use Class::MOP;
+use Module::Runtime;
 use Module::Find;
 use Try::Tiny;
 
@@ -224,7 +224,7 @@ sub has_job_method {
 Loops over all L</namespaces> and uses L<findallmod|Module::Find>
 to generate a list of modules to load. It verifies the module is
 L</wanted> before it's being loaded using
-L<Class::MOP::load_class|Class::MOP>. After loading
+L<Module::Runtime::use_module|Module::Runtime>. After loading
 L</is_valid_worker_subclass> and L<has_wanted> is used to verify it.
 After all tests have passed the modules are L<added|/add_module>.
 So finally the loader is ready and can be queried with L<get_modules>
@@ -250,7 +250,7 @@ sub load_namespaces {
     }
 
     foreach my $module (@modules) {
-        Class::MOP::load_class($module);
+        Module::Runtime::use_module($module);
         next unless $self->is_valid_worker_subclass($module);
         next unless $self->has_job_method($module);
         $self->add_module($module);

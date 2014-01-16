@@ -7,6 +7,7 @@ requires(
     'DateTime'                   => '0.4304',
     'Gearman::Client'            => '1.10',
     'Module::Find'               => '0.08',
+    'Module::Runtime'            => '0.013',
     'Moose'                      => '0.90',
     'MooseX::SimpleConfig'       => '0.05',
     'MooseX::Getopt'             => '0.24',
